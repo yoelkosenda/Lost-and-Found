@@ -1,0 +1,3 @@
+export default function ReportCard({ report }) {
+  return <article className="report-card"><div className={`report-image image-${report.color}`}><span>{report.icon}</span><small>{report.type}</small></div><div className="report-content"><div className="report-title-row"><h3>{report.title}</h3><button aria-label={`Buka ${report.title}`}>↗</button></div><div className="report-meta"><span>{report.category}</span><span>•</span><span>{report.location}</span></div><div className="report-footer"><span className={`status status-${report.status.toLowerCase().replaceAll(' ', '-')}`}>{report.status}</span><time>{report.date}</time></div></div></article>
+}

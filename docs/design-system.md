@@ -2,8 +2,8 @@
 
 Dokumen ini adalah sumber acuan visual dan interaksi untuk seluruh halaman website Lost & Found UNKLAB. Semua halaman baru—Lost Items, Found Items, Detail Barang, Report Item, AI Matching, My Reports, Notifications, Profile, dan Admin Panel—harus mengikuti aturan di sini agar tetap terasa sebagai satu produk.
 
-Versi: 1.0  
-Tanggal: 13 November 2026  
+Versi: 1.0
+Tanggal: 13 November 2026
 Basis: desain awal halaman Home/Dashboard dan wireframe beranda.
 
 ## 1. Prinsip desain
@@ -246,4 +246,3 @@ Sebuah halaman dianggap sesuai design system jika:
 - Memiliki keyboard focus dan label aksesibel.
 - Tidak membocorkan data kontak atau bukti kepemilikan.
 - Lulus build dan dapat direview tanpa perubahan visual besar yang tidak terdokumentasi.
-

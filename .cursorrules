@@ -1,0 +1,10 @@
+# Context & Instructions for Cursor
+Please read and strictly follow AGENTS.md located at the root of this project.
+
+Key rules:
+- Role: Only 1 role: Student (student). Do NOT build an admin panel or multi-role system.
+- Routing: Use the existing router in `src/router.jsx` and `src/App.jsx`. DO NOT install or import `react-router-dom`.
+- API: ALL HTTP requests MUST go through `src/lib/api.js`. DO NOT call `fetch()` directly in UI components.
+- Design: Talentflow editorial style (cream `#f7f5ef`, deep forest `#193529`, bright green CTA `#c9ee5b`, DM Serif Display + DM Sans).
+- Database: SQLite via `better-sqlite3` in `server/db.js`. Express on port 3001 in `server/index.js`.
+- Always verify with `npm run build` before completing work.

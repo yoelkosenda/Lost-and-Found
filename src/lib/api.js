@@ -20,11 +20,22 @@ function setToken(token) {
 }
 
 async function rpc(fnName, params = {}) {
-  const { data, error } = await supabase.rpc(fnName, params)
-  if (error) {
-    throw new Error(error.message || 'Permintaan tidak dapat diproses.')
+  try {
+    const { data, error } = await supabase.rpc(fnName, params)
+    if (error) {
+      const msg = error.message || ''
+      if (/failed to fetch/i.test(msg)) {
+        throw new Error('Gagal terhubung ke server Supabase. Periksa koneksi internet Anda atau muat ulang halaman.')
+      }
+      throw new Error(msg || 'Permintaan tidak dapat diproses.')
+    }
+    return data
+  } catch (err) {
+    if (/failed to fetch/i.test(err?.message || '')) {
+      throw new Error('Gagal terhubung ke server Supabase. Periksa koneksi internet Anda atau muat ulang halaman.')
+    }
+    throw err
   }
-  return data
 }
 
 export const api = {

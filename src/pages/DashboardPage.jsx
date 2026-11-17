@@ -68,6 +68,7 @@ export default function DashboardPage({ user, onLogout }) {
           <nav className="sq-nav-links" aria-label="Navigasi Dashboard">
             <a href="#ringkasan" className="sq-nav-item active">Ringkasan</a>
             <a href="#laporan" className="sq-nav-item">Laporan</a>
+            <Link to="/app/my-reports" className="sq-nav-item">Laporan Saya</Link>
             <a href="#aktivitas" className="sq-nav-item">Aktivitas</a>
             <Link to="/app/my-claims" className="sq-nav-item">Klaim Saya</Link>
           </nav>

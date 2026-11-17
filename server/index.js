@@ -27,6 +27,26 @@ app.get('/api/reports/public', (_req, res) => {
   res.json({ reports })
 })
 app.get('/api/reports', authenticate, (_req, res) => res.json({ reports: db.prepare('SELECT id, owner_id, type, title, category, location, description, status, reported_at FROM reports ORDER BY reported_at DESC').all() }))
+app.get('/api/reports/my', authenticate, (req, res) => {
+  const reports = db.prepare('SELECT id, type, title, category, location, description, status, reported_at, image_url FROM reports WHERE owner_id = ? ORDER BY reported_at DESC').all(req.userId)
+  res.json({ reports })
+})
+app.patch('/api/reports/:id/status', authenticate, (req, res) => {
+  const { status } = req.body ?? {}
+  if (!status || typeof status !== 'string' || !status.trim()) {
+    return res.status(400).json({ error: 'Status wajib diisi.' })
+  }
+  const report = db.prepare('SELECT * FROM reports WHERE id = ?').get(req.params.id)
+  if (!report) {
+    return res.status(404).json({ error: 'Laporan tidak ditemukan.' })
+  }
+  if (report.owner_id !== req.userId) {
+    return res.status(403).json({ error: 'Anda tidak memiliki izin mengubah laporan ini.' })
+  }
+  db.prepare('UPDATE reports SET status = ? WHERE id = ? AND owner_id = ?').run(status.trim(), req.params.id, req.userId)
+  const updatedReport = db.prepare('SELECT id, type, title, category, location, description, status, reported_at, image_url FROM reports WHERE id = ?').get(req.params.id)
+  res.json({ report: updatedReport })
+})
 app.post('/api/reports', authenticate, (req, res) => {
   const body = req.body ?? {}
   const text = (value) => (typeof value === 'string' ? value.trim() : '')

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../lib/api.js'
 import { Link } from '../router.jsx'
 
 const services = [
@@ -24,43 +25,39 @@ const services = [
 
 const previewReports = [
   {
-    header: 'Barang Ditemukan · Perpustakaan UNKLAB',
+    id: 104,
     type: 'Found',
-    typeLabel: 'BARANG DITEMUKAN',
     title: 'AirPods Putih Generasi 3',
-    meta: 'Perpustakaan · Lantai 2 Area Baca',
+    category: 'Elektronik',
+    location: 'Perpustakaan UNKLAB',
     status: 'Menunggu pemilik',
-    code: 'LF-104',
     description: 'Ditemukan di dekat meja baca lantai dua perpustakaan. Casing masih mulus dengan indikator lampu berfungsi normal, disimpan aman menunggu pemilik.',
   },
   {
-    header: 'Barang Hilang · Student Center',
+    id: 103,
     type: 'Lost',
-    typeLabel: 'BARANG HILANG',
     title: 'Dompet Kulit Cokelat',
-    meta: 'Student Center · Area Bangku Tengah',
+    category: 'Aksesori',
+    location: 'Student Center',
     status: 'Masih dicari',
-    code: 'LF-103',
     description: 'Dompet lipat kulit warna cokelat tua berisi tanda pengenal mahasiswa. Terakhir terlihat saat jam istirahat siang di sekitar Student Center.',
   },
   {
-    header: 'Barang Hilang · Parkiran Fakultas',
+    id: 102,
     type: 'Lost',
-    typeLabel: 'BARANG HILANG',
     title: 'Kunci Motor Honda',
-    meta: 'Parkiran Fakultas · Jalur Utara',
+    category: 'Kunci',
+    location: 'Parkiran Fakultas',
     status: 'Masih dicari',
-    code: 'LF-102',
     description: 'Satu set kunci motor Honda dengan gantungan karet biru kecil. Kemungkinan terjatuh saat mengambil helm di area parkiran fakultas.',
   },
   {
-    header: 'Barang Ditemukan · Cafeteria',
+    id: 101,
     type: 'Found',
-    typeLabel: 'BARANG DITEMUKAN',
     title: 'Tumbler Hijau Stainless',
-    meta: 'Cafeteria · Meja Dekat Kasir',
+    category: 'Perlengkapan',
+    location: 'Cafeteria',
     status: 'Menunggu pemilik',
-    code: 'LF-101',
     description: 'Tumbler minum warna hijau ukuran 500ml tanpa label nama yang tertinggal di meja dekat kasir utama Cafeteria UNKLAB.',
   },
 ]
@@ -155,6 +152,24 @@ const campusStats = [
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState('01')
+  const [reports, setReports] = useState(previewReports)
+
+  useEffect(() => {
+    let active = true
+    api
+      .publicReports()
+      .then((res) => {
+        if (active && Array.isArray(res?.reports) && res.reports.length > 0) {
+          setReports(res.reports)
+        }
+      })
+      .catch(() => {
+        // Pertahankan previewReports jika API gagal dimuat
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   return (
     <div className="sq-page">
@@ -312,52 +327,63 @@ export default function LandingPage() {
           </div>
 
           <div className="sq-works-grid">
-            {previewReports.map((item) => (
-              <article className="sq-work-card" key={item.code}>
-                <div className="sq-work-header">
-                  <span>{item.header}</span>
-                  <em className={`sq-status-badge ${item.type.toLowerCase()}`}>{item.status}</em>
-                </div>
+            {reports.map((item) => {
+              const isFound = item.type === 'Found'
+              const typeClass = isFound ? 'found' : 'lost'
+              const typeHeader = isFound ? 'Barang Ditemukan' : 'Barang Hilang'
+              const typeLabel = isFound ? 'BARANG DITEMUKAN' : 'BARANG HILANG'
 
-                <div className="sq-work-body">
-                  <div className={`sq-work-visual ${item.type.toLowerCase()}`}>
-                    <div className="sq-visual-grid" aria-hidden="true" />
-                    <div className="sq-visual-top">
-                      <span className="sq-visual-tag">{item.typeLabel}</span>
-                      <span className="sq-visual-code">#{item.code}</span>
-                    </div>
-                    <div className="sq-visual-center">
-                      <div className="sq-visual-orb">
-                        <img
-                          src={item.type === 'Found' ? '/figma/icon-service-2.svg' : '/figma/icon-service-1.svg'}
-                          alt=""
-                          width="36"
-                          height="36"
-                        />
+              return (
+                <article className="sq-work-card" key={item.id}>
+                  <div className="sq-work-header">
+                    <span>
+                      {typeHeader} · {item.location}
+                    </span>
+                    <em className={`sq-status-badge ${typeClass}`}>{item.status}</em>
+                  </div>
+
+                  <div className="sq-work-body">
+                    <div className={`sq-work-visual ${typeClass}`}>
+                      <div className="sq-visual-grid" aria-hidden="true" />
+                      <div className="sq-visual-top">
+                        <span className="sq-visual-tag">{typeLabel}</span>
+                        <span className="sq-visual-code">#LF-{item.id}</span>
                       </div>
-                      <strong>{item.title}</strong>
-                      <small>{item.status}</small>
+                      <div className="sq-visual-center">
+                        <div className="sq-visual-orb">
+                          <img
+                            src={isFound ? '/figma/icon-service-2.svg' : '/figma/icon-service-1.svg'}
+                            alt=""
+                            width="36"
+                            height="36"
+                          />
+                        </div>
+                        <strong>{item.title}</strong>
+                        <small>{item.status}</small>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="sq-work-meta">
-                    <div>
-                      <h3>{item.title}</h3>
-                      <div className="sq-work-pill">{item.meta}</div>
+                    <div className="sq-work-meta">
+                      <div>
+                        <h3>{item.title}</h3>
+                        <div className="sq-work-pill">
+                          {item.category} · {item.location}
+                        </div>
+                      </div>
+                      <Link
+                        to="/login"
+                        className="sq-icon-action"
+                        aria-label={`Lihat detail laporan ${item.title}`}
+                      >
+                        <img src="/figma/icon-arrow-up-right.svg" alt="" width="28" height="28" />
+                      </Link>
                     </div>
-                    <Link
-                      to="/login"
-                      className="sq-icon-action"
-                      aria-label={`Lihat detail laporan ${item.title}`}
-                    >
-                      <img src="/figma/icon-arrow-up-right.svg" alt="" width="28" height="28" />
-                    </Link>
-                  </div>
 
-                  <p className="sq-work-desc">{item.description}</p>
-                </div>
-              </article>
-            ))}
+                    <p className="sq-work-desc">{item.description}</p>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </section>
 

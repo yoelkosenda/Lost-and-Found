@@ -1,10 +1,10 @@
-# Talentflow-inspired Lost & Found — Final Design
+# SquareUp Dark Theme Lost & Found UNKLAB — Final Design
 
 ## Purpose
 
-Replace the current static Lost & Found UNKLAB dashboard with a cohesive student-facing web application. The visual language is inspired by the supplied Talentflow Webflow reference: warm cream surfaces, large editorial serif headings, spacious SaaS composition, fine borders, rounded controls, and confident green calls to action. Content, illustrations, icons, and branding remain original to Lost & Found UNKLAB.
+Build a cohesive student-facing Lost & Found UNKLAB web application adapting the **SquareUp Figma Dark Theme**: deep carbon surfaces (`#1a1a1a`), structured architectural grid borders (`1px solid #262626`), wave-textured section banners with dot-matrix overlays, gradient icon badges, and vibrant neon lime (`#9eff00`) calls to action. All copy, campus locations, and workflows are tailored specifically for Universitas Klabat (UNKLAB) students.
 
-The first delivery prioritizes three working experiences: a public landing page, student login, and an authenticated main menu. It also establishes a local backend and database foundation for later report and claim flows.
+The core delivery prioritizes three working experiences: a public landing page (`/`), student login (`/login`), and an authenticated community dashboard (`/app`), backed by a local Express API and SQLite database foundation for subsequent report and claim workflows.
 
 ## Scope
 
@@ -12,38 +12,47 @@ The first delivery prioritizes three working experiences: a public landing page,
 
 - Public landing page at `/`.
 - Student-only login page at `/login`.
-- Protected main menu at `/app`.
-- React + Vite frontend routing and responsive layout.
-- Express API with SQLite storage.
-- Password-hash based authentication and HTTP-only local session cookie.
-- Seeded student account for local demonstration.
+- Protected main menu / dashboard at `/app`.
+- React + Vite frontend with custom lightweight History API routing (`src/router.jsx`) and responsive dark-theme layout.
+- Express API (`server/index.js`) with SQLite storage (`server/db.js`).
+- Password-hash based authentication (`bcryptjs`) and HTTP-only local session cookie (`lf_session`).
+- Seeded student account (`student@unklab.ac.id` / `unklab123`) for local demonstration.
 - Initial `users`, `reports`, and `claims` database tables.
-- API-backed dashboard report list, summary, search, and type filter.
+- API-backed dashboard report list, summary statistics, real-time search, and type filter.
 - Loading, empty, validation, error, and success feedback states.
 
-### Excluded from this phase
+### Excluded from Base Phase (Covered in Team Tasks 1–5)
 
 - Student self-registration, password reset, and external identity providers.
-- Admin roles or a separate admin experience.
-- Real photo upload, report creation/editing, messaging, and complete claim UI.
-- Production hosting, external email delivery, and deployment secrets.
+- Admin roles or a separate admin panel (strictly single-role: `student`).
+- Production cloud hosting, external SMTP delivery, and deployment secrets.
 
-## Visual System
+## Visual System (SquareUp Figma Dark Theme)
 
-- **Palette:** warm cream page background, deep forest/ink text, a saturated green primary action, muted sage/stone supporting surfaces, and restrained warm highlight accents for report types.
-- **Typography:** display serif for hero and prominent section titles; clean sans-serif for navigation, forms, body copy, metadata, and controls.
-- **Composition:** broad desktop gutters, clear asymmetric hero composition, card groups separated by generous space, thin neutral borders, and rounded but not pill-heavy controls.
-- **Imagery:** original Lost & Found item and campus-themed graphic compositions. Do not copy proprietary Talentflow illustrations, copy, photos, or assets.
-- **Interaction:** 150–220 ms opacity/transform transitions; visible keyboard focus; motion reduced when the user requests reduced motion.
+- **Palette:**
+  - Page background: `--bg-dark` (`#1a1a1a`) and card surface `--bg-card` (`#1f1f1f`).
+  - Structural borders & pills: `--grey-15` (`#262626`), `--grey-20` (`#333333`), `--grey-30` (`#4c4c4d`).
+  - Typography colors: `--white` (`#ffffff`) for headings, `--grey-90` (`#e6e6e6`) for primary copy, `--grey-60` (`#98989a`) for metadata and descriptions.
+  - Primary accent & CTA: `--green-50` (`#9eff00`), hover `--green-60` (`#b1ff33`), highlight text `--green-70` (`#c5ff66`), soft lime `--green-80` (`#d8ff99`).
+  - Status accents: Neon lime (`#9eff00` on `rgba(158, 255, 0, 0.12)`) for `Found` items; warm amber (`#ffc470` on `rgba(255, 179, 71, 0.12)`) for `Lost` items.
+- **Typography:**
+  - `Barlow` (`400`, `500`, `600`, `700`) for headings, navigation, buttons, statistics, and form labels.
+  - `Inter` (`400`, `500`, `600`) for report descriptions and item codes.
+- **Composition:**
+  - Centered `.sq-container` (`width: min(1596px, calc(100% - 64px))`).
+  - Sticky `.sq-navbar` with blur backdrop and green cube logo (`/figma/logo-cube.svg`).
+  - Section headers (`.sq-section-banner`) featuring dark green tint (`#171b12`), wave overlays (`/figma/banner-wave-*.png`), and dot grids (`/figma/banner-dots.png`).
+  - Multi-column bordered card grids (`.sq-services-grid`, `.sq-works-grid`, `.sq-process-grid`, `.sq-why-grid`, `.sq-faq-grid`, `.sq-report-grid`).
+- **Interaction:** `0.2s` transform/background transitions; high-contrast `2px solid #9eff00` keyboard focus outline; transitions disabled when `prefers-reduced-motion: reduce` is active.
 
 ## Information Architecture
 
 ```text
 Public visitor
-  /                         Landing page
+  /                         Landing page (SquareUp Dark Theme)
   /login                    Student sign-in
 Student session
-  /app                      Protected main menu
+  /app                      Protected student dashboard
   /api/auth/*               Authentication API
   /api/reports              Dashboard report data
 ```
@@ -54,41 +63,32 @@ An unauthenticated visit to `/app` redirects to `/login`. A successfully authent
 
 ### Landing page (`/`)
 
-1. Compact header: Lost & Found UNKLAB brand, anchor navigation, and `Masuk` CTA.
-2. Editorial hero: a clear recovery-focused statement, short supporting copy, primary `Mulai mencari` CTA, secondary process link, and original illustrative object composition.
-3. Community proof: concise counts for reports, returns, and active students.
-4. Three-step process: report, match, return.
-5. Recent report preview: cards backed by seed data.
-6. Closing CTA and concise footer.
+1. **Sticky Navbar (`.sq-navbar`):** Cube brand logo (`Lost and Found. UNKLAB`), section anchor links (`Beranda`, `Layanan`, `Laporan`, `Cara Kerja`, `Keunggulan`, `FAQ`), and `Masuk Portal` lime CTA button.
+2. **Hero Section (`.sq-hero`):** Dot-matrix backdrop, main heading with `--green-70` highlight, audience pill bar (`Mahasiswa UNKLAB`, `Barang Hilang`, `Barang Temuan`, `Komunitas Peduli`), dual CTA buttons (`Lihat Laporan Terbaru` & `Mulai Mencari`), and SVG wireframe topographic terrain visual (`.sq-hero-terrain`).
+3. **Trust & Campus Stats Bar (`.sq-trust-bar`):** Floating trust pill (`Dipercaya oleh 1.200+ Mahasiswa UNKLAB`) and 6-column campus metric/zone grid.
+4. **Services Section (`#layanan`):** Wave banner header + 3-column `.sq-services-grid` with gradient `.sq-icon-badge` icons and full-width `.sq-btn-card` links.
+5. **Recent Reports Preview (`#laporan`):** Wave banner header + 2x2 `.sq-works-grid` featuring report header, `.sq-status-badge`, visual card orb, location pill (`.sq-work-pill`), and description.
+6. **Four-Step Process (`#cara-kerja`):** Wave banner header + 2x2 `.sq-process-grid` with oversized `--green-80` step numbers (`01`–`04`).
+7. **Why Choose Us (`#keunggulan`):** Wave banner header + 2x2 `.sq-why-grid` highlighting UNKLAB student exclusivity, community collaboration, privacy, and real-time status.
+8. **Interactive FAQ (`#faq`):** Wave banner header + 2-column `.sq-faq-grid` accordion with toggleable answers.
+9. **Closing CTA & Footer (`.sq-cta-banner` & `.sq-footer`):** Glowing cube emblem, closing call to action, campus contact pills, and copyright.
 
 ### Login page (`/login`)
 
-- Two-column editorial composition on wide screens; supporting community/value panel and focused form card.
-- Visible labels for email and password, inline validation, show/hide password control, submit loading state, and useful server errors.
-- Demo credential hint for local development only.
-- Mobile converts to a single-column, readable form-first layout.
+- Sticky `.sq-navbar` with back link to `/`.
+- `.sq-cta-banner.sq-login-banner` welcome header with cube emblem and introductory instructions.
+- `.sq-login-shell` containing `.sq-form-box`:
+  - 2-column `.sq-form-row` with `.sq-input-card` for `Email Mahasiswa` and `Password` (including `.sq-password-toggle`).
+  - `.sq-access-card` featuring a 2x2 `.sq-check-grid` summarizing portal capabilities.
+  - `.sq-form-footer` with `.sq-btn-lime.sq-submit-btn` and `.sq-demo-pill` displaying local demo credentials (`student@unklab.ac.id` / `unklab123`).
 
-### Main menu (`/app`)
+### Main menu / Dashboard (`/app`)
 
-- Authenticated header with the student name and logout control.
-- Welcome panel and primary `Buat laporan` CTA (non-creating placeholder in this phase).
-- Summary cards calculated from report records.
-- Search and report-type filtering.
-- Report cards with title, lost/found type, category, place, time, and text status.
-- Recent activity panel sourced from seeded report events.
-- Clear loading, API-error/retry, and no-results states.
-
-## Components and Boundaries
-
-- `src/pages/`: route-level compositions only.
-- `src/components/layout/`: shared header, footer, authenticated app shell, and navigation primitives.
-- `src/components/auth/`: login form and field-level validation presentation.
-- `src/components/landing/`: public landing sections.
-- `src/components/dashboard/`: summary, filtering, report card/list, and activity components.
-- `src/lib/api.js`: the only frontend adapter that calls backend endpoints.
-- `server/`: Express application, route handlers, auth middleware, database initialization, and seed data.
-
-Presentation components receive data and callbacks; they do not call HTTP endpoints directly.
+- Sticky `.sq-navbar` with section links (`Ringkasan`, `Laporan`, `Aktivitas`), `.sq-user-chip` (initials avatar, student name, role), and `Keluar ↗` button.
+- **Dashboard Hero (`.sq-dash-hero`):** Personalized greeting (`Halo, {firstName}.`), `+ Buat laporan` primary lime CTA, and `.sq-dash-highlight` card showing weekly found items count.
+- **Summary Cards (`.sq-dash-stats`):** 3-column bordered `.sq-stat-card` row for `Barang hilang (LOST)`, `Barang ditemukan (FOUND)`, and `Total laporan (TOTAL)`.
+- **Report Explorer (`#laporan`):** `.sq-dash-toolbar` with search input (`.sq-search-field`) and type filter dropdown (`.sq-select-field`), followed by a 2-column `.sq-report-grid` of `.sq-report-card` items.
+- **Community Activity Banner (`#aktivitas`):** `.sq-cta-banner` highlighting community impact, ready to be expanded into a live activity feed.
 
 ## Backend and Data Model
 
@@ -101,8 +101,6 @@ Presentation components receive data and callbacks; they do not call HTTP endpoi
 | `GET` | `/api/auth/me` | Return the signed-in student profile. |
 | `GET` | `/api/reports` | Return report cards and dashboard summary inputs. |
 
-All routes other than login must reject an invalid/missing session with `401`. The frontend maps `401` to the login route.
-
 ### Tables
 
 | Table | Essential fields |
@@ -111,31 +109,9 @@ All routes other than login must reject an invalid/missing session with `401`. T
 | `reports` | `id`, `owner_id`, `type`, `title`, `category`, `location`, `description`, `status`, `reported_at`, `image_url` (nullable) |
 | `claims` | `id`, `report_id`, `claimant_id`, `status`, `submitted_at` |
 
-SQLite is stored locally and initialized/seeding occurs through a server-owned script. A seeded local account is documented in the README for developer testing. Its password is hashed and never placed in frontend source.
-
 ## Error Handling and Accessibility
 
-- API failures show a short plain-language message and a retry path; no raw server error is shown to students.
-- Login responses avoid revealing whether an email address exists beyond an invalid-credentials message.
-- Every form control has a visible label and accessible error association.
-- Buttons, nav, menu controls, and icon-only controls have accessible names and keyboard focus.
-- Report type/status is communicated by text in addition to color.
-- The app supports keyboard use, a logical heading hierarchy, responsive reflow, and `prefers-reduced-motion`.
-
-## Verification
-
-1. Frontend production build succeeds.
-2. Valid seeded credentials create a session and enter `/app`.
-3. Invalid credentials show an inline login error.
-4. `/app` and `/api/reports` reject unauthenticated requests.
-5. Logout ends the session and returns the visitor to public/login state.
-6. Dashboard shows loading, data, filtering/no-results, and API error/retry states.
-7. Landing, login, and main menu are checked at desktop and mobile viewport widths.
-
-## Implementation Sequence
-
-1. Replace global design tokens and construct the shared responsive layout.
-2. Build landing and login views using original Lost & Found content.
-3. Add Express/SQLite initialization, seed, session auth, and API routes.
-4. Wire frontend session guard and login/logout to the API.
-5. Implement API-driven main-menu data states and complete verification.
+- API failures display a clear message inside `.sq-state.error` with a `Coba lagi` button.
+- Every form control has a visible `.sq-input-label` or `aria-label`.
+- Report status is always communicated via text inside `.sq-status-badge` in addition to color.
+- Supports keyboard navigation (`:focus-visible` lime outline), responsive single-column collapse below `800px`, and `prefers-reduced-motion`.

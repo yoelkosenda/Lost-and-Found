@@ -19,5 +19,12 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/logout', (req, res) => { sessions.delete(req.cookies.lf_session); res.clearCookie('lf_session').status(204).end() })
 app.get('/api/auth/me', authenticate, (req, res) => res.json({ user: getUser(req.userId) }))
 app.get('/api/reports', authenticate, (_req, res) => res.json({ reports: db.prepare('SELECT id, type, title, category, location, description, status, reported_at FROM reports ORDER BY reported_at DESC').all() }))
+app.get('/api/reports/:id', authenticate, (req, res) => {
+  const report = db.prepare(`SELECT r.id, r.owner_id, r.type, r.title, r.category, r.location, r.description,
+    r.status, r.reported_at, r.image_url, u.name AS owner_name
+    FROM reports r JOIN users u ON r.owner_id = u.id WHERE r.id = ?`).get(req.params.id)
+  if (!report) return res.status(404).json({ error: 'Laporan tidak ditemukan.' })
+  return res.json({ report })
+})
 app.use((error, _req, res, _next) => { console.error(error); res.status(500).json({ error: 'Terjadi gangguan pada server. Silakan coba lagi.' }) })
 app.listen(3001, () => console.log('Lost & Found API at http://localhost:3001'))

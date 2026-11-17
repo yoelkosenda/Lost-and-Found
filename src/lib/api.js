@@ -10,4 +10,5 @@ export const api = {
   login: (email, password) => request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request('/api/auth/logout', { method: 'POST' }),
   reports: () => request('/api/reports'),
+  report: (id) => request(`/api/reports/${id}`),
 }

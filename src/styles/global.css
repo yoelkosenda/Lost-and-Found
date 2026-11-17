@@ -566,6 +566,12 @@ select:focus-visible {
   color: #ffc470;
 }
 
+.sq-status-badge.claim {
+  background: rgba(38, 38, 38, 0.75);
+  border-color: var(--grey-20);
+  color: var(--green-80);
+}
+
 .sq-work-body {
   padding: 36px 44px 48px;
   display: flex;
@@ -1418,6 +1424,95 @@ select:focus-visible {
   color: #ff9b9b;
 }
 
+/* ACTIVITY FEED SECTION (Dashboard #aktivitas) */
+.sq-activity-sub {
+  margin: 0;
+  max-width: 440px;
+  color: var(--grey-60);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.sq-activity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.sq-activity-card {
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 22px;
+  border-right: 1px solid var(--grey-15);
+  border-bottom: 1px solid var(--grey-15);
+  background: var(--bg-dark);
+  transition: background 0.2s;
+}
+
+.sq-activity-card:hover {
+  background: rgba(38, 38, 38, 0.28);
+}
+
+.sq-activity-card:nth-child(2n) {
+  border-right: none;
+}
+
+.sq-activity-card:nth-last-child(-n + 2) {
+  border-bottom: none;
+}
+
+.sq-activity-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sq-activity-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.sq-activity-type-tag {
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--grey-15);
+  border: 1px solid var(--grey-20);
+  color: var(--grey-60);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+}
+
+.sq-activity-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--white);
+}
+
+.sq-activity-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--grey-15);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sq-activity-time {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--grey-60);
+}
+
 /* FOOTER (Figma Node 39:261) */
 .sq-footer {
   border-top: 1px solid var(--grey-15);
@@ -1572,7 +1667,8 @@ select:focus-visible {
   .sq-form-row,
   .sq-check-grid,
   .sq-dash-stats,
-  .sq-report-grid {
+  .sq-report-grid,
+  .sq-activity-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1581,9 +1677,14 @@ select:focus-visible {
   .sq-why-card,
   .sq-faq-item,
   .sq-stat-card,
-  .sq-report-card {
+  .sq-report-card,
+  .sq-activity-card {
     border-right: none;
     border-bottom: 1px solid var(--grey-15);
+  }
+
+  .sq-activity-card:last-child {
+    border-bottom: none;
   }
 
   .sq-section-banner,
@@ -1596,6 +1697,7 @@ select:focus-visible {
   .sq-work-body,
   .sq-process-card,
   .sq-why-card,
+  .sq-activity-card,
   .sq-form-box {
     padding: 32px 24px;
   }
@@ -1638,6 +1740,19 @@ select:focus-visible {
   .sq-footer-social {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .sq-activity-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sq-activity-badges {
+    justify-content: flex-start;
+  }
+
+  .sq-activity-title {
+    font-size: 19px;
   }
 }
 

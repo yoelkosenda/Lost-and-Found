@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link } from '../router.jsx'
+import ClaimAction from '../components/claims/ClaimAction.jsx'
 
 export default function DashboardPage({ user, onLogout }) {
   const [data, setData] = useState(null)
+  const [claims, setClaims] = useState([])
   const [query, setQuery] = useState('')
   const [type, setType] = useState('Semua')
   const [error, setError] = useState('')
@@ -11,9 +13,18 @@ export default function DashboardPage({ user, onLogout }) {
   const load = () => {
     setError('')
     api.reports().then(setData).catch((e) => setError(e.message))
+    // Riwayat klaim hanya dipakai untuk menandai kartu; kegagalannya tidak boleh menutupi daftar laporan.
+    api.myClaims().then(({ claims }) => setClaims(claims)).catch(() => {})
   }
 
   useEffect(load, [])
+
+  // Status klaim terbaru user per laporan (daftar klaim sudah terurut dari yang terbaru).
+  const claimStatusByReport = useMemo(() => {
+    const map = new Map()
+    for (const c of claims) if (!map.has(c.report_id)) map.set(c.report_id, c.status)
+    return map
+  }, [claims])
 
   const reports = useMemo(
     () =>
@@ -51,6 +62,7 @@ export default function DashboardPage({ user, onLogout }) {
             <a href="#ringkasan" className="sq-nav-item active">Ringkasan</a>
             <a href="#laporan" className="sq-nav-item">Laporan</a>
             <a href="#aktivitas" className="sq-nav-item">Aktivitas</a>
+            <Link to="/app/my-claims" className="sq-nav-item">Klaim Saya</Link>
           </nav>
 
           <div className="sq-account-bar">
@@ -93,6 +105,10 @@ export default function DashboardPage({ user, onLogout }) {
                 <a href="#laporan" className="sq-btn sq-btn-outline">
                   Jelajahi Laporan ↓
                 </a>
+                {/* .sq-nav-links disembunyikan di layar <= 800px, jadi tautan ini menjaga akses di mobile. */}
+                <Link to="/app/my-claims" className="sq-btn sq-btn-outline">
+                  Klaim Saya ↗
+                </Link>
               </div>
             </div>
 
@@ -222,6 +238,13 @@ export default function DashboardPage({ user, onLogout }) {
                     </div>
 
                     {r.description && <p className="sq-report-desc">{r.description}</p>}
+
+                    <ClaimAction
+                      report={r}
+                      user={user}
+                      existingStatus={claimStatusByReport.get(r.id)}
+                      onClaimed={load}
+                    />
 
                     <div className="sq-report-footer">
                       <span className="sq-status-text">{r.status}</span>

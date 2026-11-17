@@ -2,7 +2,13 @@ import { useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
 import GoogleMapPin from '../components/maps/GoogleMapPin.jsx'
-import { CAMPUS_CENTER, CAMPUS_LOCATION_NAMES, getCoordinatesForLocation } from '../lib/campusLocations.js'
+import {
+  CAMPUS_CENTER,
+  CAMPUS_LOCATIONS,
+  CAMPUS_LOCATION_NAMES,
+  findNearestCampusLocation,
+  getCoordinatesForLocation,
+} from '../lib/campusLocations.js'
 
 const CATEGORIES = ['Elektronik', 'Aksesori', 'Kunci', 'Dokumen/Buku', 'Perlengkapan', 'Pakaian', 'Lainnya']
 const LOCATIONS = CAMPUS_LOCATION_NAMES
@@ -236,19 +242,22 @@ export default function CreateReportPage({ user, onLogout }) {
                   Lokasi di Kampus <span className="sq-required" aria-hidden="true">*</span>
                 </span>
                 <div className="sq-input-underline">
-                  <input
+                  <select
+                    className="sq-form-select"
                     value={form.location}
                     onChange={(e) => update('location', e.target.value)}
-                    placeholder="Pilih atau ketik lokasi"
-                    list="campus-locations"
                     required
                     {...a11y('location')}
-                  />
-                  <datalist id="campus-locations">
+                  >
+                    <option value="" disabled>
+                      Pilih lokasi di kampus
+                    </option>
                     {LOCATIONS.map((l) => (
-                      <option key={l} value={l} />
+                      <option key={l} value={l}>
+                        {CAMPUS_LOCATIONS[l]?.label || l}
+                      </option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
                 {fieldError('location')}
               </label>
@@ -283,9 +292,16 @@ export default function CreateReportPage({ user, onLogout }) {
                 type={form.type}
                 height={240}
                 interactive
-                onSelect={({ lat, lng }) =>
-                  setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))
-                }
+                onSelect={({ lat, lng }) => {
+                  const nearestLocation = findNearestCampusLocation(lat, lng)
+                  setForm((prev) => ({
+                    ...prev,
+                    location: nearestLocation,
+                    latitude: lat,
+                    longitude: lng,
+                  }))
+                  if (errors.location) setErrors((prev) => ({ ...prev, location: undefined }))
+                }}
               />
             </div>
 

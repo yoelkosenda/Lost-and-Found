@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { CAMPUS_CENTER } from '../../lib/campusLocations.js'
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
@@ -34,10 +36,22 @@ function loadGoogleMapsScript(apiKey) {
   return mapsLoaderPromise
 }
 
+function createPinIcon(type) {
+  const color = type === 'Lost' ? '#ffc470' : '#9eff00'
+  return L.divIcon({
+    className: 'sq-leaflet-pin',
+    html: `<span style="display:block;width:18px;height:18px;border-radius:50%;background:${color};border:3px solid #1a1a1a;box-shadow:0 0 0 2px ${color}66;"></span>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  })
+}
+
 /**
- * Menampilkan peta Google Maps untuk satu titik lokasi atau daftar marker laporan.
- * Menggunakan Google Maps JavaScript API jika VITE_GOOGLE_MAPS_API_KEY tersedia,
- * dan otomatis fallback ke Google Maps Embed jika API key belum dikonfigurasi.
+ * Menampilkan peta lokasi kampus UNKLAB.
+ * - Menggunakan Google Maps JavaScript API jika VITE_GOOGLE_MAPS_API_KEY tersedia.
+ * - Menggunakan peta interaktif Leaflet (dark theme) jika interactive=true atau markers disediakan tanpa API key,
+ *   sehingga pengguna tetap bisa klik peta secara manual.
+ * - Menggunakan Google Maps Embed untuk tampilan statis satu titik tanpa API key.
  */
 export default function GoogleMapPin({
   lat = CAMPUS_CENTER.lat,
@@ -53,13 +67,23 @@ export default function GoogleMapPin({
   onMarkerClick,
 }) {
   const containerRef = useRef(null)
-  const mapRef = useRef(null)
-  const markerRefs = useRef([])
+  const gMapRef = useRef(null)
+  const gMarkerRefs = useRef([])
+  const leafletMapRef = useRef(null)
+  const leafletLayerRef = useRef(null)
+  const onSelectRef = useRef(onSelect)
+  const onMarkerClickRef = useRef(onMarkerClick)
+  onSelectRef.current = onSelect
+  onMarkerClickRef.current = onMarkerClick
+
   const [sdkError, setSdkError] = useState(false)
   const hasApiKey = Boolean(GOOGLE_MAPS_API_KEY.trim())
+  const useGoogleSdk = hasApiKey && !sdkError
+  const useLeafletInteractive = !useGoogleSdk && (interactive || (Array.isArray(markers) && markers.length > 0))
 
+  // Mode 1: Google Maps JavaScript API
   useEffect(() => {
-    if (!hasApiKey || sdkError || !containerRef.current) return
+    if (!useGoogleSdk || !containerRef.current) return
     let cancelled = false
 
     loadGoogleMapsScript(GOOGLE_MAPS_API_KEY)
@@ -67,8 +91,8 @@ export default function GoogleMapPin({
         if (cancelled || !containerRef.current) return
 
         const center = { lat: Number(lat), lng: Number(lng) }
-        if (!mapRef.current) {
-          mapRef.current = new maps.Map(containerRef.current, {
+        if (!gMapRef.current) {
+          gMapRef.current = new maps.Map(containerRef.current, {
             center,
             zoom,
             styles: DARK_MAP_STYLES,
@@ -77,13 +101,12 @@ export default function GoogleMapPin({
             fullscreenControl: true,
           })
         } else {
-          mapRef.current.setCenter(center)
-          mapRef.current.setZoom(zoom)
+          gMapRef.current.setCenter(center)
+          gMapRef.current.setZoom(zoom)
         }
 
-        // Clear previous markers
-        for (const m of markerRefs.current) m.setMap(null)
-        markerRefs.current = []
+        for (const m of gMarkerRefs.current) m.setMap(null)
+        gMarkerRefs.current = []
 
         const infoWindow = new maps.InfoWindow()
         const list =
@@ -95,7 +118,7 @@ export default function GoogleMapPin({
           const markerColor = item.type === 'Lost' ? '#ffc470' : '#9eff00'
           const marker = new maps.Marker({
             position: { lat: Number(item.lat), lng: Number(item.lng) },
-            map: mapRef.current,
+            map: gMapRef.current,
             title: item.title,
             draggable: interactive,
             icon: {
@@ -109,8 +132,8 @@ export default function GoogleMapPin({
           })
 
           marker.addListener('click', () => {
-            if (onMarkerClick && item.id !== 'pin') {
-              onMarkerClick(item)
+            if (onMarkerClickRef.current && item.id !== 'pin') {
+              onMarkerClickRef.current(item)
               return
             }
             const safeTitle = String(item.title || '').replace(/</g, '&lt;')
@@ -120,25 +143,25 @@ export default function GoogleMapPin({
                 <strong>${safeTitle}</strong>${safeSub ? `<div style="font-size:12px;margin-top:2px;">${safeSub}</div>` : ''}
               </div>`,
             )
-            infoWindow.open(mapRef.current, marker)
+            infoWindow.open(gMapRef.current, marker)
           })
 
-          if (interactive && onSelect) {
+          if (interactive) {
             marker.addListener('dragend', (ev) => {
-              onSelect({
+              onSelectRef.current?.({
                 lat: Number(ev.latLng.lat().toFixed(6)),
                 lng: Number(ev.latLng.lng().toFixed(6)),
               })
             })
           }
 
-          markerRefs.current.push(marker)
+          gMarkerRefs.current.push(marker)
         }
 
-        if (interactive && onSelect) {
-          maps.event.clearListeners(mapRef.current, 'click')
-          mapRef.current.addListener('click', (ev) => {
-            onSelect({
+        if (interactive) {
+          maps.event.clearListeners(gMapRef.current, 'click')
+          gMapRef.current.addListener('click', (ev) => {
+            onSelectRef.current?.({
               lat: Number(ev.latLng.lat().toFixed(6)),
               lng: Number(ev.latLng.lng().toFixed(6)),
             })
@@ -152,7 +175,87 @@ export default function GoogleMapPin({
     return () => {
       cancelled = true
     }
-  }, [hasApiKey, sdkError, lat, lng, title, subtitle, type, zoom, interactive, onSelect, markers, onMarkerClick])
+  }, [useGoogleSdk, lat, lng, title, subtitle, type, zoom, interactive, markers])
+
+  // Mode 2: Interactive Leaflet Map (ketika API key Google Maps belum disetel)
+  useEffect(() => {
+    if (!useLeafletInteractive || !containerRef.current) return
+
+    if (!leafletMapRef.current) {
+      const map = L.map(containerRef.current, {
+        center: [Number(lat), Number(lng)],
+        zoom,
+        zoomControl: true,
+        attributionControl: false,
+      })
+
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+      }).addTo(map)
+
+      const layerGroup = L.layerGroup().addTo(map)
+      if (interactive) {
+        map.on('click', (ev) => {
+          onSelectRef.current?.({
+            lat: Number(ev.latlng.lat.toFixed(6)),
+            lng: Number(ev.latlng.lng.toFixed(6)),
+          })
+        })
+      }
+
+      leafletMapRef.current = map
+      leafletLayerRef.current = layerGroup
+    } else {
+      leafletMapRef.current.setView([Number(lat), Number(lng)], zoom, { animate: true })
+    }
+
+    const layerGroup = leafletLayerRef.current
+    layerGroup.clearLayers()
+
+    const list =
+      Array.isArray(markers) && markers.length > 0
+        ? markers
+        : [{ id: 'pin', lat: Number(lat), lng: Number(lng), title, subtitle, type }]
+
+    for (const item of list) {
+      const marker = L.marker([Number(item.lat), Number(item.lng)], {
+        icon: createPinIcon(item.type),
+        draggable: interactive,
+      }).addTo(layerGroup)
+
+      if (item.title && !interactive) {
+        marker.bindTooltip(`${item.title}${item.subtitle ? ` · ${item.subtitle}` : ''}`, {
+          direction: 'top',
+        })
+      }
+
+      marker.on('click', () => {
+        if (onMarkerClickRef.current && item.id !== 'pin') {
+          onMarkerClickRef.current(item)
+        }
+      })
+
+      if (interactive) {
+        marker.on('dragend', () => {
+          const pos = marker.getLatLng()
+          onSelectRef.current?.({
+            lat: Number(pos.lat.toFixed(6)),
+            lng: Number(pos.lng.toFixed(6)),
+          })
+        })
+      }
+    }
+  }, [useLeafletInteractive, lat, lng, title, subtitle, type, zoom, interactive, markers])
+
+  useEffect(() => {
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove()
+        leafletMapRef.current = null
+        leafletLayerRef.current = null
+      }
+    }
+  }, [])
 
   const formattedCoords = `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`
   const mapsExternalUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`
@@ -161,7 +264,7 @@ export default function GoogleMapPin({
   return (
     <div className="sq-map-card">
       <div className="sq-map-frame" style={{ height: `${height}px` }}>
-        {hasApiKey && !sdkError ? (
+        {useGoogleSdk || useLeafletInteractive ? (
           <div ref={containerRef} className="sq-map-canvas" aria-label={`Peta lokasi ${title}`} />
         ) : (
           <iframe
@@ -176,7 +279,7 @@ export default function GoogleMapPin({
       <div className="sq-map-footer">
         <span className="sq-map-coords">
           Koordinat: <code>{formattedCoords}</code>
-          {interactive && hasApiKey && !sdkError ? ' · Klik peta atau geser pin untuk menyesuaikan titik' : ''}
+          {interactive ? ' · Klik peta atau geser pin untuk menandai lokasi' : ''}
         </span>
         <a
           href={mapsExternalUrl}

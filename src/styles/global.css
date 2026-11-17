@@ -1126,6 +1126,11 @@ summary:focus-visible {
   font: inherit;
   font-size: 17px;
   outline: none;
+  color-scheme: dark;
+}
+
+.sq-input-underline select {
+  cursor: pointer;
 }
 
 .sq-input-underline select option {
@@ -2146,6 +2151,10 @@ summary:focus-visible {
   height: 100%;
   border: 0;
   display: block;
+}
+
+.sq-map-card .leaflet-tile-pane {
+  filter: invert(90%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
 
 .sq-map-footer {

@@ -69,6 +69,8 @@ export const api = {
       p_description: data.description,
       p_reported_at: data.reported_at || null,
       p_image_url: data.image_url || null,
+      p_latitude: data.latitude ?? null,
+      p_longitude: data.longitude ?? null,
     }),
   report: (id) =>
     rpc('api_report_detail', {

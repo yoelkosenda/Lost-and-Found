@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
 import ClaimAction from '../components/claims/ClaimAction.jsx'
+import GoogleMapPin from '../components/maps/GoogleMapPin.jsx'
+import { getCoordinatesForReport } from '../lib/campusLocations.js'
 
 export default function ReportDetailPage({ id, user, onLogout }) {
   const [report, setReport] = useState(null)
@@ -87,6 +89,27 @@ export default function ReportDetailPage({ id, user, onLogout }) {
               <section className="sq-detail-description">
                 <h2>Deskripsi barang</h2>
                 <p>{report.description || 'Belum ada deskripsi tambahan untuk laporan ini.'}</p>
+              </section>
+
+              <section className="sq-detail-description">
+                <h2>Titik Lokasi di Peta</h2>
+                <p className="sq-map-caption">
+                  Perkiraan titik {report.type === 'Lost' ? 'kehilangan' : 'penemuan'} barang di area{' '}
+                  <strong>{report.location}</strong>, Kampus UNKLAB.
+                </p>
+                {(() => {
+                  const coords = getCoordinatesForReport(report)
+                  return (
+                    <GoogleMapPin
+                      lat={coords.lat}
+                      lng={coords.lng}
+                      title={report.title}
+                      subtitle={`${report.type === 'Lost' ? 'Hilang' : 'Ditemukan'} di ${report.location}`}
+                      type={report.type}
+                      height={260}
+                    />
+                  )
+                })()}
               </section>
             </section>
 

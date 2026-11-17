@@ -12,7 +12,7 @@ export default function App() {
   useEffect(() => { api.me().then(({ user }) => setUser(user)).catch(() => setUser(null)) }, [])
   async function login(email, password) { const { user } = await api.login(email, password); setUser(user); navigate('/app') }
   async function logout() { await api.logout(); setUser(null); navigate('/') }
-  if (user === undefined) return <div className="boot">Memuat Lost & Found…</div>
+  if (user === undefined) return <div className="boot">Memuat Lost and Found UNKLAB…</div>
   if (path === '/app') return user ? <DashboardPage user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/login') return user ? <Redirect to="/app" /> : <LoginPage onLogin={login} />
   return <LandingPage />

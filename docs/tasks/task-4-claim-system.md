@@ -101,3 +101,58 @@ export const api = {
 - [ ] Bukti ciri khusus klaim tidak bocor pada kartu laporan publik dan tersimpan aman di database.
 - [ ] Mahasiswa dapat melihat daftar klaim yang pernah diajukannya beserta label teks statusnya di `/app/my-claims`.
 - [ ] Menjalankan `npm run build` sukses tanpa error kompilasi.
+
+---
+
+## 5. Langkah-Langkah Git (Dari Buat Branch Baru Sampai Pull Request)
+
+Ikuti langkah berikut secara berurutan di terminal:
+
+```bash
+# 1. Pastikan berada di branch main terbaru
+git checkout main
+git pull origin main
+
+# 2. Buat branch baru khusus Task 4
+git checkout -b feature/claim-system
+
+# 3. Instal dependensi & jalankan server lokal untuk pengujian
+npm install
+npm run dev
+
+# 4. Setelah fitur selesai dikerjakan, wajib uji build produksi
+npm run build
+
+# 5. Periksa file yang berubah (pastikan server/data/lost-and-found.db tidak ikut)
+git status
+
+# 6. Simpan perubahan (commit) dan push branch ke GitHub
+git add .
+git commit -m "feat(claim): tambah sistem pengajuan klaim dan halaman riwayat klaim"
+git push -u origin feature/claim-system
+```
+
+**Cara Membuat Pull Request (PR) di GitHub:**
+1. Buka repositori `https://github.com/yoelkosenda/Lost-and-Found` di browser.
+2. Klik tombol **"Compare & pull request"** untuk branch `feature/claim-system` (pastikan **base:** `main` ← **compare:** `feature/claim-system`).
+3. Beri judul PR: `feat(claim): tambah sistem pengajuan klaim dan halaman riwayat klaim`, isi deskripsi singkat, lalu klik **"Create pull request"**.
+
+---
+
+## 6. Prompt Siap Pakai untuk AI Coding Agent (Copy-Paste)
+
+Salin (*copy-paste*) prompt di bawah ini langsung ke AI Coding Agent Anda (Antigravity / Cursor / Claude Code / Copilot):
+
+```text
+Tolong baca file AGENTS.md, docs/design-system.md, dan docs/tasks/task-4-claim-system.md terlebih dahulu, lalu kerjakan seluruh spesifikasi Task 4 (Sistem Pengajuan Klaim Barang Temuan) sampai tuntas.
+
+Aturan wajib yang harus dipatuhi:
+1. Hanya ada 1 peran pengguna: Mahasiswa (student). Bukti kepemilikan klaim bersifat rahasia dan tidak boleh ditampilkan pada kartu laporan publik.
+2. Gunakan custom router di src/router.jsx (Link, navigate) dan daftarkan rute /app/my-claims di src/App.jsx. DILARANG menginstal react-router-dom.
+3. Di server/db.js, pastikan tabel claims memiliki kolom message (gunakan ALTER TABLE claims ADD COLUMN message TEXT DEFAULT '' dengan try/catch).
+4. Di server/index.js, buat endpoint POST /api/claims (validasi barang bertipe Found, message minimal 10 karakter, user tidak mengklaim laporan miliknya sendiri, dan cegah duplikasi klaim pending) serta GET /api/claims/my dengan middleware authenticate.
+5. Tambahkan fungsi createClaim(report_id, message) dan myClaims() di src/lib/api.js. Jangan memanggil fetch() langsung di komponen React.
+6. Buat komponen/modal form pengajuan klaim dan halaman riwayat klaim src/pages/MyClaimsPage.jsx menggunakan sistem desain SquareUp Figma Dark Theme di src/styles/global.css (gunakan .sq-page, .sq-navbar, .sq-container, .sq-form-box, .sq-input-card, .sq-input-label, .sq-report-card, .sq-status-badge, serta tombol .sq-btn-lime dan .sq-btn-outline).
+7. Integrasikan tombol/modal klaim pada kartu atau halaman detail laporan bertipe Found serta tambahkan tautan "Klaim Saya" (/app/my-claims) di navigasi dashboard.
+8. Setelah selesai, jalankan npm run build untuk memastikan tidak ada error kompilasi.
+```

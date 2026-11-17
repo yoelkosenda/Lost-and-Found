@@ -99,3 +99,58 @@ if (path === '/app/my-reports') return user ? <MyReportsPage user={user} onLogou
 - [ ] Pengguna dapat memperbarui status laporan miliknya menjadi selesai atau ditutup.
 - [ ] Upaya mengubah laporan orang lain ditolak oleh backend (HTTP 403).
 - [ ] Menjalankan `npm run build` sukses tanpa error kompilasi.
+
+---
+
+## 5. Langkah-Langkah Git (Dari Buat Branch Baru Sampai Pull Request)
+
+Ikuti langkah berikut secara berurutan di terminal:
+
+```bash
+# 1. Pastikan berada di branch main terbaru
+git checkout main
+git pull origin main
+
+# 2. Buat branch baru khusus Task 3
+git checkout -b feature/my-reports
+
+# 3. Instal dependensi & jalankan server lokal untuk pengujian
+npm install
+npm run dev
+
+# 4. Setelah fitur selesai dikerjakan, wajib uji build produksi
+npm run build
+
+# 5. Periksa file yang berubah (pastikan server/data/lost-and-found.db tidak ikut)
+git status
+
+# 6. Simpan perubahan (commit) dan push branch ke GitHub
+git add .
+git commit -m "feat(my-reports): tambah halaman laporan saya dan kelola status"
+git push -u origin feature/my-reports
+```
+
+**Cara Membuat Pull Request (PR) di GitHub:**
+1. Buka repositori `https://github.com/yoelkosenda/Lost-and-Found` di browser.
+2. Klik tombol **"Compare & pull request"** untuk branch `feature/my-reports` (pastikan **base:** `main` ← **compare:** `feature/my-reports`).
+3. Beri judul PR: `feat(my-reports): tambah halaman laporan saya dan kelola status`, isi deskripsi singkat, lalu klik **"Create pull request"**.
+
+---
+
+## 6. Prompt Siap Pakai untuk AI Coding Agent (Copy-Paste)
+
+Salin (*copy-paste*) prompt di bawah ini langsung ke AI Coding Agent Anda (Antigravity / Cursor / Claude Code / Copilot):
+
+```text
+Tolong baca file AGENTS.md, docs/design-system.md, dan docs/tasks/task-3-my-reports.md terlebih dahulu, lalu kerjakan seluruh spesifikasi Task 3 (Halaman Laporan Saya & Kelola Status) sampai tuntas.
+
+Aturan wajib yang harus dipatuhi:
+1. Hanya ada 1 peran pengguna: Mahasiswa (student).
+2. Gunakan custom router di src/router.jsx (Link, navigate) dan daftarkan rute /app/my-reports di src/App.jsx. DILARANG menginstal react-router-dom.
+3. Buat endpoint GET /api/reports/my dan PATCH /api/reports/:id/status di server/index.js dengan middleware authenticate. Pastikan PATCH memverifikasi owner_id === req.userId (kembalikan HTTP 403 jika bukan pemilik laporan).
+4. Tambahkan fungsi myReports() dan updateReportStatus(id, status) di src/lib/api.js. Jangan memanggil fetch() langsung di komponen React.
+5. Buat halaman src/pages/MyReportsPage.jsx menggunakan sistem desain SquareUp Figma Dark Theme di src/styles/global.css (gunakan class .sq-page, .sq-navbar, .sq-container, .sq-dash-hero, .sq-dash-stats dengan 3 .sq-stat-card untuk Total/Aktif/Selesai, .sq-dash-toolbar untuk filter tipe, .sq-report-grid, .sq-report-card, .sq-status-badge, dan .sq-state untuk empty state).
+6. Sediakan tombol aksi pada setiap kartu milik user untuk mengubah status laporan menjadi "Sudah ditemukan" / "Sudah dikembalikan" (.sq-btn-lime) atau "Dibatalkan / Ditutup" (.sq-btn-outline).
+7. Tambahkan link navigasi "Laporan Saya" pada .sq-nav-links di src/pages/DashboardPage.jsx.
+8. Setelah selesai, jalankan npm run build untuk memastikan tidak ada error kompilasi.
+```

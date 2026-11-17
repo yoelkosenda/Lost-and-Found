@@ -93,3 +93,58 @@ if (reportDetailMatch) {
 - [ ] Tombol kembali membawa pengguna ke `/app` tanpa me-refresh halaman.
 - [ ] Privasi terjaga: tidak menampilkan password hash atau nomor telepon pribadi.
 - [ ] Menjalankan `npm run build` sukses tanpa error kompilasi.
+
+---
+
+## 5. Langkah-Langkah Git (Dari Buat Branch Baru Sampai Pull Request)
+
+Ikuti langkah berikut secara berurutan di terminal:
+
+```bash
+# 1. Pastikan berada di branch main terbaru
+git checkout main
+git pull origin main
+
+# 2. Buat branch baru khusus Task 2
+git checkout -b feature/report-detail
+
+# 3. Instal dependensi & jalankan server lokal untuk pengujian
+npm install
+npm run dev
+
+# 4. Setelah fitur selesai dikerjakan, wajib uji build produksi
+npm run build
+
+# 5. Periksa file yang berubah (pastikan server/data/lost-and-found.db tidak ikut)
+git status
+
+# 6. Simpan perubahan (commit) dan push branch ke GitHub
+git add .
+git commit -m "feat(report): tambah halaman detail laporan barang"
+git push -u origin feature/report-detail
+```
+
+**Cara Membuat Pull Request (PR) di GitHub:**
+1. Buka repositori `https://github.com/yoelkosenda/Lost-and-Found` di browser.
+2. Klik tombol **"Compare & pull request"** untuk branch `feature/report-detail` (pastikan **base:** `main` ← **compare:** `feature/report-detail`).
+3. Beri judul PR: `feat(report): tambah halaman detail laporan barang`, isi deskripsi singkat, lalu klik **"Create pull request"**.
+
+---
+
+## 6. Prompt Siap Pakai untuk AI Coding Agent (Copy-Paste)
+
+Salin (*copy-paste*) prompt di bawah ini langsung ke AI Coding Agent Anda (Antigravity / Cursor / Claude Code / Copilot):
+
+```text
+Tolong baca file AGENTS.md, docs/design-system.md, dan docs/tasks/task-2-report-detail.md terlebih dahulu, lalu kerjakan seluruh spesifikasi Task 2 (Halaman Detail Laporan Barang) sampai tuntas.
+
+Aturan wajib yang harus dipatuhi:
+1. Hanya ada 1 peran pengguna: Mahasiswa (student). Jangan menampilkan password_hash atau nomor telepon pribadi.
+2. Gunakan custom router yang sudah ada di src/router.jsx (Link, navigate) dan tangani rute dinamis /app/reports/:id menggunakan regex di src/App.jsx. DILARANG menginstal react-router-dom.
+3. Buat endpoint GET /api/reports/:id di server/index.js dengan middleware authenticate yang melakukan JOIN tabel reports dan users untuk mengambil nama pelapor (owner_name), serta mengembalikan 404 jika ID tidak ditemukan.
+4. Tambahkan fungsi report(id) di src/lib/api.js. Jangan memanggil fetch() langsung di komponen React.
+5. Buat halaman src/pages/ReportDetailPage.jsx menggunakan sistem desain SquareUp Figma Dark Theme di src/styles/global.css (gunakan class .sq-page, .sq-navbar, .sq-container, .sq-section, .sq-status-badge, .sq-work-visual dengan .sq-visual-orb, .sq-work-pill, .sq-state untuk loading/error, serta tombol .sq-btn.sq-btn-lime dan .sq-btn-outline).
+6. Jika laporan bertipe Found, tampilkan tombol CTA "Ajukan Klaim Barang Ini" (.sq-btn-lime). Jika bertipe Lost, tampilkan kartu panduan koordinasi pengembalian di kampus.
+7. Ubah kartu laporan (.sq-report-card) di src/pages/DashboardPage.jsx agar dapat diklik dan mengarahkan pengguna ke /app/reports/${r.id}.
+8. Setelah selesai, jalankan npm run build untuk memastikan tidak ada error kompilasi.
+```

@@ -89,3 +89,58 @@ export const api = {
 - [ ] Section `#aktivitas` di dashboard (`/app`) menampilkan event laporan/klaim terbaru secara dinamis dari `GET /api/activities`.
 - [ ] Seluruh elemen baru mengikuti **SquareUp Figma Dark Theme** di `src/styles/global.css` dan responsif di layar mobile.
 - [ ] Menjalankan `npm run build` sukses tanpa error kompilasi.
+
+---
+
+## 5. Langkah-Langkah Git (Dari Buat Branch Baru Sampai Pull Request)
+
+Ikuti langkah berikut secara berurutan di terminal:
+
+```bash
+# 1. Pastikan berada di branch main terbaru
+git checkout main
+git pull origin main
+
+# 2. Buat branch baru khusus Task 5
+git checkout -b feature/landing-and-activity
+
+# 3. Instal dependensi & jalankan server lokal untuk pengujian
+npm install
+npm run dev
+
+# 4. Setelah fitur selesai dikerjakan, wajib uji build produksi
+npm run build
+
+# 5. Periksa file yang berubah (pastikan server/data/lost-and-found.db tidak ikut)
+git status
+
+# 6. Simpan perubahan (commit) dan push branch ke GitHub
+git add .
+git commit -m "feat(activity): integrasi laporan publik landing page dan activity feed dashboard"
+git push -u origin feature/landing-and-activity
+```
+
+**Cara Membuat Pull Request (PR) di GitHub:**
+1. Buka repositori `https://github.com/yoelkosenda/Lost-and-Found` di browser.
+2. Klik tombol **"Compare & pull request"** untuk branch `feature/landing-and-activity` (pastikan **base:** `main` ← **compare:** `feature/landing-and-activity`).
+3. Beri judul PR: `feat(activity): integrasi laporan publik landing page dan activity feed dashboard`, isi deskripsi singkat, lalu klik **"Create pull request"**.
+
+---
+
+## 6. Prompt Siap Pakai untuk AI Coding Agent (Copy-Paste)
+
+Salin (*copy-paste*) prompt di bawah ini langsung ke AI Coding Agent Anda (Antigravity / Cursor / Claude Code / Copilot):
+
+```text
+Tolong baca file AGENTS.md, docs/design-system.md, dan docs/tasks/task-5-landing-and-activity.md terlebih dahulu, lalu kerjakan seluruh spesifikasi Task 5 (Landing Page Dinamis, Activity Feed Dashboard, & Standarisasi CSS) sampai tuntas.
+
+Aturan wajib yang harus dipatuhi:
+1. Hanya ada 1 peran pengguna: Mahasiswa (student). Jangan membocorkan data sensitif pada endpoint publik.
+2. Gunakan custom router di src/router.jsx. DILARANG menginstal react-router-dom.
+3. Di server/index.js, buat endpoint publik GET /api/reports/public (tanpa auth, mengambil 4 laporan terbaru untuk preview landing page) dan endpoint terproteksi GET /api/activities (dengan middleware authenticate, menggabungkan aktivitas terbaru dari tabel reports dan claims).
+4. Tambahkan fungsi publicReports() dan activities() di src/lib/api.js. Jangan memanggil fetch() langsung di komponen React.
+5. Di src/pages/LandingPage.jsx, panggil api.publicReports() saat komponen dimuat dan render datanya ke dalam grid .sq-works-grid menggunakan struktur .sq-work-card SquareUp Figma Dark Theme (dengan fallback ke data preview jika API masih memuat).
+6. Di src/pages/DashboardPage.jsx, panggil api.activities() dan tampilkan feed aktivitas komunitas secara dinamis pada section #aktivitas menggunakan gaya kartu/grid berbingkai gelap SquareUp (.sq-section, .sq-icon-badge.sm, .sq-status-badge) tanpa menghilangkan estetika tema gelap (#1a1a1a & #9eff00).
+7. Pastikan seluruh styling tambahan di src/styles/global.css rapi, memakai variabel CSS :root yang ada, dan responsif di breakpoint 1100px, 800px, serta 480px.
+8. Setelah selesai, jalankan npm run build untuk memastikan tidak ada error kompilasi.
+```

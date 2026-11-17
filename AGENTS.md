@@ -77,7 +77,10 @@ Desain mengadaptasi estetika gelap **SquareUp Figma Dark Theme** (lihat detail l
 
 ---
 
-## 5. Daftar Spesifikasi Task untuk Anggota Tim
+## 5. Daftar Spesifikasi Task & Panduan Prompt untuk 5 Anggota Tim
+
+Panduan pembagian tugas, alur Git (dari membuat branch baru sampai Pull Request), dan kumpulan prompt siap pakai untuk 5 anggota tim tersedia di:
+- **Panduan Utama & Kumpulan Prompt 5 Anggota:** `docs/tasks/README.md`
 
 Jika Anda ditugaskan untuk mengerjakan salah satu fitur spesifik, buka dan ikuti panduan detail pada file berikut:
 - **Tugas 1 (Buat Laporan Baru):** `docs/tasks/task-1-create-report.md`

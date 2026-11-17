@@ -10,4 +10,6 @@ export const api = {
   login: (email, password) => request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request('/api/auth/logout', { method: 'POST' }),
   reports: () => request('/api/reports'),
+  myReports: () => request('/api/reports/my'),
+  updateReportStatus: (id, status) => request(`/api/reports/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 }

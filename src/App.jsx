@@ -4,6 +4,7 @@ import { navigate } from './router.jsx'
 import LandingPage from './pages/LandingPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
+import MyReportsPage from './pages/MyReportsPage.jsx'
 
 export default function App() {
   const [path, setPath] = useState(window.location.pathname)
@@ -14,6 +15,7 @@ export default function App() {
   async function logout() { await api.logout(); setUser(null); navigate('/') }
   if (user === undefined) return <div className="boot">Memuat Lost and Found UNKLAB…</div>
   if (path === '/app') return user ? <DashboardPage user={user} onLogout={logout} /> : <Redirect to="/login" />
+  if (path === '/app/my-reports') return user ? <MyReportsPage user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/login') return user ? <Redirect to="/app" /> : <LoginPage onLogin={login} />
   return <LandingPage />
 }

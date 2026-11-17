@@ -108,7 +108,7 @@ export default function DashboardPage({ user, onLogout }) {
       }
       if (
         query.trim() &&
-        !`${r.title} ${r.category} ${r.location}`.toLowerCase().includes(query.trim().toLowerCase())
+        !`${r.title} ${r.category} ${r.color ?? ''} ${r.location}`.toLowerCase().includes(query.trim().toLowerCase())
       ) {
         return false
       }
@@ -407,6 +407,9 @@ export default function DashboardPage({ user, onLogout }) {
 
                     <div className="sq-work-pill">
                       {r.category} · {r.location}
+                    </div>
+                    <div className="sq-work-pill">
+                      Warna: {r.color || 'Belum dicantumkan'}
                     </div>
 
                     {r.description && <p className="sq-report-desc">{r.description}</p>}

@@ -4,12 +4,14 @@ import { Link, navigate } from '../router.jsx'
 import ClaimAction from '../components/claims/ClaimAction.jsx'
 import GoogleMapPin from '../components/maps/GoogleMapPin.jsx'
 import StatusHistory from '../components/reports/StatusHistory.jsx'
+import ReportImagePreview from '../components/reports/ReportImagePreview.jsx'
 import { getCoordinatesForReport } from '../lib/campusLocations.js'
 
 export default function ReportDetailPage({ id, user, onLogout }) {
   const [report, setReport] = useState(null)
   const [claims, setClaims] = useState([])
   const [error, setError] = useState('')
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const load = () => {
     setError('')
@@ -31,6 +33,9 @@ export default function ReportDetailPage({ id, user, onLogout }) {
   const initials = user.name.split(' ').map((part) => part[0]).join('')
   const date = report && new Date(report.reported_at).toLocaleString('id-ID', {
     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+  const estimatedTime = report && new Date(report.reported_at).toLocaleTimeString('id-ID', {
+    hour: '2-digit', minute: '2-digit',
   })
 
   return (
@@ -74,7 +79,16 @@ export default function ReportDetailPage({ id, user, onLogout }) {
               </div>
 
               <div className={`sq-work-visual ${report.type.toLowerCase()} sq-detail-visual`}>
-                {report.image_url ? <img src={report.image_url} alt={`Foto ${report.title}`} /> : (
+                {report.image_url ? (
+                  <button
+                    type="button"
+                    className="sq-detail-image-button"
+                    onClick={() => setPreviewOpen(true)}
+                    aria-label={`Perbesar foto ${report.title}`}
+                  >
+                    <img src={report.image_url} alt={`Foto ${report.title}`} />
+                  </button>
+                ) : (
                   <>
                     <div className="sq-visual-grid" aria-hidden="true" />
                     <div className="sq-visual-center">
@@ -128,7 +142,9 @@ export default function ReportDetailPage({ id, user, onLogout }) {
                 <span className="sq-kicker-pill">RINGKASAN LAPORAN</span>
                 <dl className="sq-detail-metadata">
                   <div><dt>Kategori</dt><dd>{report.category}</dd></div>
+                  <div><dt>Warna barang</dt><dd>{report.color || 'Tidak dicantumkan'}</dd></div>
                   <div><dt>Lokasi kampus</dt><dd>{report.location}</dd></div>
+                  <div><dt>Perkiraan jam kejadian</dt><dd>{estimatedTime}</dd></div>
                   <div><dt>Waktu dilaporkan</dt><dd><time dateTime={report.reported_at}>{date}</time></dd></div>
                   <div><dt>Dilaporkan oleh</dt><dd>{report.owner_name}<small>Mahasiswa</small></dd></div>
                 </dl>
@@ -162,6 +178,13 @@ export default function ReportDetailPage({ id, user, onLogout }) {
           </article>
         )}
       </main>
+      {previewOpen && report?.image_url && (
+        <ReportImagePreview
+          imageUrl={report.image_url}
+          title={report.title}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </div>
   )
 }

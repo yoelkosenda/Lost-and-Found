@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
-import { Link } from '../router.jsx'
+import { Link, navigate } from '../router.jsx'
+import ClaimAction from '../components/claims/ClaimAction.jsx'
 
 export default function DashboardPage({ user, onLogout }) {
   const [data, setData] = useState(null)
+  const [claims, setClaims] = useState([])
   const [activityData, setActivityData] = useState(null)
   const [activityError, setActivityError] = useState('')
   const [query, setQuery] = useState('')
@@ -14,6 +16,8 @@ export default function DashboardPage({ user, onLogout }) {
     setError('')
     setActivityError('')
     api.reports().then(setData).catch((e) => setError(e.message))
+    // Riwayat klaim hanya dipakai untuk menandai kartu; kegagalannya tidak boleh menutupi daftar laporan.
+    api.myClaims().then(({ claims }) => setClaims(claims)).catch(() => {})
     api
       .activities()
       .then(setActivityData)
@@ -21,6 +25,13 @@ export default function DashboardPage({ user, onLogout }) {
   }
 
   useEffect(load, [])
+
+  // Status klaim terbaru user per laporan (daftar klaim sudah terurut dari yang terbaru).
+  const claimStatusByReport = useMemo(() => {
+    const map = new Map()
+    for (const c of claims) if (!map.has(c.report_id)) map.set(c.report_id, c.status)
+    return map
+  }, [claims])
 
   const reports = useMemo(
     () =>
@@ -58,6 +69,7 @@ export default function DashboardPage({ user, onLogout }) {
             <a href="#ringkasan" className="sq-nav-item active">Ringkasan</a>
             <a href="#laporan" className="sq-nav-item">Laporan</a>
             <a href="#aktivitas" className="sq-nav-item">Aktivitas</a>
+            <Link to="/app/my-claims" className="sq-nav-item">Klaim Saya</Link>
           </nav>
 
           <div className="sq-account-bar">
@@ -100,6 +112,10 @@ export default function DashboardPage({ user, onLogout }) {
                 <a href="#laporan" className="sq-btn sq-btn-outline">
                   Jelajahi Laporan ↓
                 </a>
+                {/* .sq-nav-links disembunyikan di layar <= 800px, jadi tautan ini menjaga akses di mobile. */}
+                <Link to="/app/my-claims" className="sq-btn sq-btn-outline">
+                  Klaim Saya ↗
+                </Link>
               </div>
             </div>
 
@@ -195,7 +211,21 @@ export default function DashboardPage({ user, onLogout }) {
           ) : reports.length ? (
             <div className="sq-report-grid">
               {reports.map((r) => (
-                <Link to={`/app/reports/${r.id}`} className={`sq-report-card ${r.type.toLowerCase()}`} key={r.id} aria-label={`Lihat detail ${r.title}`}>
+                <article
+                  className={`sq-report-card ${r.type.toLowerCase()}`}
+                  key={r.id}
+                  onClick={() => navigate(`/app/reports/${r.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      navigate(`/app/reports/${r.id}`)
+                    }
+                  }}
+                  role="link"
+                  tabIndex={0}
+                  style={{ cursor: 'pointer' }}
+                  aria-label={`Lihat detail ${r.title}`}
+                >
                   <div className="sq-report-card-header">
                     <span className="sq-report-type-label">
                       {r.type === 'Lost' ? 'BARANG HILANG' : 'BARANG DITEMUKAN'}
@@ -230,6 +260,13 @@ export default function DashboardPage({ user, onLogout }) {
 
                     {r.description && <p className="sq-report-desc">{r.description}</p>}
 
+                    <ClaimAction
+                      report={r}
+                      user={user}
+                      existingStatus={claimStatusByReport.get(r.id)}
+                      onClaimed={load}
+                    />
+
                     <div className="sq-report-footer">
                       <span className="sq-status-text">{r.status}</span>
                       <span className="sq-icon-action sm" aria-hidden="true">
@@ -237,7 +274,7 @@ export default function DashboardPage({ user, onLogout }) {
                       </span>
                     </div>
                   </div>
-                </Link>
+                </article>
               ))}
             </div>
           ) : (

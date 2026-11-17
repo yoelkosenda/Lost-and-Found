@@ -1,23 +1,29 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
+import ClaimAction from '../components/claims/ClaimAction.jsx'
 
 export default function ReportDetailPage({ id, user, onLogout }) {
   const [report, setReport] = useState(null)
+  const [claims, setClaims] = useState([])
   const [error, setError] = useState('')
-  const [claimInfo, setClaimInfo] = useState(false)
 
-  useEffect(() => {
-    let active = true
-    setReport(null)
+  const load = () => {
     setError('')
     api.report(id).then(({ report: result }) => {
-      if (active) setReport(result)
+      setReport(result)
     }).catch((reason) => {
-      if (active) setError(reason.message)
+      setError(reason.message)
     })
-    return () => { active = false }
+    api.myClaims().then(({ claims: list }) => setClaims(list)).catch(() => {})
+  }
+
+  useEffect(() => {
+    setReport(null)
+    load()
   }, [id])
+
+  const existingStatus = claims.find((c) => String(c.report_id) === String(id))?.status
 
   const initials = user.name.split(' ').map((part) => part[0]).join('')
   const date = report && new Date(report.reported_at).toLocaleString('id-ID', {
@@ -34,6 +40,7 @@ export default function ReportDetailPage({ id, user, onLogout }) {
           </Link>
           <nav className="sq-nav-links" aria-label="Navigasi utama">
             <Link to="/app" className="sq-nav-item active">Dashboard</Link>
+            <Link to="/app/my-claims" className="sq-nav-item">Klaim Saya</Link>
           </nav>
           <div className="sq-account-bar">
             <div className="sq-user-chip"><span className="sq-avatar">{initials}</span><div className="sq-user-meta"><b>{user.name}</b><small>Mahasiswa</small></div></div>
@@ -99,8 +106,16 @@ export default function ReportDetailPage({ id, user, onLogout }) {
                   <span className="sq-kicker-pill">BARANG TEMUAN</span>
                   <h2>Merasa ini milik Anda?</h2>
                   <p>Ajukan klaim dengan menjelaskan ciri barang yang tidak dipublikasikan pada laporan.</p>
-                  <button type="button" className="sq-btn sq-btn-lime" onClick={() => setClaimInfo(true)}>Ajukan Klaim Barang Ini</button>
-                  {claimInfo && <p className="sq-detail-claim-note" role="status">Pengajuan klaim untuk barang ini akan diproses melalui koordinasi kampus. Siapkan bukti kepemilikan untuk verifikasi.</p>}
+                  {report.owner_id === user.id ? (
+                    <p className="sq-detail-claim-note" role="status">Ini adalah laporan barang temuan yang Anda buat sendiri.</p>
+                  ) : (
+                    <ClaimAction
+                      report={report}
+                      user={user}
+                      existingStatus={existingStatus}
+                      onClaimed={load}
+                    />
+                  )}
                 </section>
               ) : (
                 <section className="sq-detail-action-card">

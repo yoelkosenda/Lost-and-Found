@@ -13,4 +13,6 @@ export const api = {
   report: (id) => request(`/api/reports/${id}`),
   publicReports: () => request('/api/reports/public'),
   activities: () => request('/api/activities'),
+  createClaim: (report_id, message) => request('/api/claims', { method: 'POST', body: JSON.stringify({ report_id, message }) }),
+  myClaims: () => request('/api/claims/my'),
 }

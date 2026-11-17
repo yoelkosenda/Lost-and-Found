@@ -88,6 +88,11 @@ export const api = {
       p_token: getToken(),
       p_report_id: Number(id),
     }),
+  reportHistory: (id) =>
+    rpc('api_report_history', {
+      p_token: getToken(),
+      p_report_id: Number(id),
+    }),
   publicReports: () => rpc('api_public_reports'),
   activities: () => rpc('api_activities', { p_token: getToken() }),
   createClaim: (report_id, message) =>

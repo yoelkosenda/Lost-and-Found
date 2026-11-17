@@ -3,7 +3,25 @@ import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
 import ClaimAction from '../components/claims/ClaimAction.jsx'
 import GoogleMapPin from '../components/maps/GoogleMapPin.jsx'
-import { CAMPUS_CENTER, getCoordinatesForReport } from '../lib/campusLocations.js'
+import { CAMPUS_CENTER, CAMPUS_LOCATION_NAMES, getCoordinatesForReport } from '../lib/campusLocations.js'
+
+const REPORT_CATEGORIES = [
+  'Elektronik',
+  'Aksesori',
+  'Kunci',
+  'Dokumen/Buku',
+  'Perlengkapan',
+  'Pakaian',
+  'Lainnya',
+]
+
+const REPORT_STATUSES = [
+  'Masih dicari',
+  'Menunggu pemilik',
+  'Sedang diklaim',
+  'Sudah dikembalikan',
+  'Dibatalkan / Ditutup',
+]
 
 export default function DashboardPage({ user, onLogout }) {
   const [data, setData] = useState(null)
@@ -12,7 +30,28 @@ export default function DashboardPage({ user, onLogout }) {
   const [activityError, setActivityError] = useState('')
   const [query, setQuery] = useState('')
   const [type, setType] = useState('Semua')
+  const [category, setCategory] = useState('Semua')
+  const [location, setLocation] = useState('Semua')
+  const [dateRange, setDateRange] = useState('Semua')
+  const [statusFilter, setStatusFilter] = useState('Semua')
   const [error, setError] = useState('')
+
+  const hasActiveFilters =
+    query.trim() !== '' ||
+    type !== 'Semua' ||
+    category !== 'Semua' ||
+    location !== 'Semua' ||
+    dateRange !== 'Semua' ||
+    statusFilter !== 'Semua'
+
+  const resetFilters = () => {
+    setQuery('')
+    setType('Semua')
+    setCategory('Semua')
+    setLocation('Semua')
+    setDateRange('Semua')
+    setStatusFilter('Semua')
+  }
 
   const load = () => {
     setError('')
@@ -35,15 +74,46 @@ export default function DashboardPage({ user, onLogout }) {
     return map
   }, [claims])
 
-  const reports = useMemo(
-    () =>
-      (data?.reports ?? []).filter(
-        (r) =>
-          (type === 'Semua' || r.type === type) &&
-          `${r.title} ${r.category} ${r.location}`.toLowerCase().includes(query.toLowerCase()),
-      ),
-    [data, query, type],
-  )
+  const reports = useMemo(() => {
+    const now = new Date()
+    const startOf7DaysAgo = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - 6,
+    ).getTime()
+
+    return (data?.reports ?? []).filter((r) => {
+      if (type !== 'Semua' && r.type !== type) return false
+      if (category !== 'Semua' && r.category !== category) return false
+      if (location !== 'Semua' && r.location !== location) return false
+      if (
+        statusFilter !== 'Semua' &&
+        (r.status || '').toLowerCase() !== statusFilter.toLowerCase()
+      ) {
+        return false
+      }
+      if (dateRange !== 'Semua') {
+        const reportedDate = new Date(r.reported_at)
+        if (Number.isNaN(reportedDate.getTime())) return false
+        if (dateRange === 'today') {
+          const isToday =
+            reportedDate.getFullYear() === now.getFullYear() &&
+            reportedDate.getMonth() === now.getMonth() &&
+            reportedDate.getDate() === now.getDate()
+          if (!isToday) return false
+        } else if (dateRange === '7days') {
+          if (reportedDate.getTime() < startOf7DaysAgo) return false
+        }
+      }
+      if (
+        query.trim() &&
+        !`${r.title} ${r.category} ${r.location}`.toLowerCase().includes(query.trim().toLowerCase())
+      ) {
+        return false
+      }
+      return true
+    })
+  }, [data, query, type, category, location, dateRange, statusFilter])
 
   const found = data?.reports.filter((r) => r.type === 'Found').length ?? 0
   const lost = data?.reports.filter((r) => r.type === 'Lost').length ?? 0
@@ -202,6 +272,97 @@ export default function DashboardPage({ user, onLogout }) {
             </div>
           </div>
 
+          <div className="sq-advanced-filters" aria-label="Filter lanjutan laporan">
+            <div className="sq-advanced-filters-grid">
+              <label className="sq-filter-group">
+                <span className="sq-filter-label">Kategori</span>
+                <select
+                  className="sq-select-field"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  aria-label="Filter kategori"
+                >
+                  <option value="Semua">Semua Kategori</option>
+                  {REPORT_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="sq-filter-group">
+                <span className="sq-filter-label">Lokasi Kampus</span>
+                <select
+                  className="sq-select-field"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  aria-label="Filter lokasi kampus"
+                >
+                  <option value="Semua">Semua Lokasi</option>
+                  {CAMPUS_LOCATION_NAMES.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {loc}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="sq-filter-group">
+                <span className="sq-filter-label">Rentang Tanggal</span>
+                <select
+                  className="sq-select-field"
+                  value={dateRange}
+                  onChange={(e) => setDateRange(e.target.value)}
+                  aria-label="Filter rentang tanggal"
+                >
+                  <option value="Semua">Semua Waktu</option>
+                  <option value="today">Hari ini</option>
+                  <option value="7days">7 hari terakhir</option>
+                </select>
+              </label>
+
+              <label className="sq-filter-group">
+                <span className="sq-filter-label">Status</span>
+                <select
+                  className="sq-select-field"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  aria-label="Filter status laporan"
+                >
+                  <option value="Semua">Semua Status</option>
+                  {REPORT_STATUSES.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="sq-filter-summary-row">
+              <p className="sq-filter-count" aria-live="polite">
+                {data ? (
+                  <>
+                    <strong>{reports.length}</strong> laporan ditemukan
+                  </>
+                ) : (
+                  'Memuat laporan…'
+                )}
+              </p>
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  className="sq-btn sq-btn-outline sq-reset-filter-btn"
+                  onClick={resetFilters}
+                >
+                  Reset Filter ✕
+                </button>
+              )}
+            </div>
+          </div>
+
           {reports.length > 0 && (
             <div className="sq-dash-map-wrap">
               <GoogleMapPin
@@ -305,8 +466,14 @@ export default function DashboardPage({ user, onLogout }) {
               ))}
             </div>
           ) : (
-            <div className="sq-state">
-              Tidak ada laporan yang sesuai. Coba kata kunci atau filter lain.
+            <div className="sq-state sq-empty-state">
+              <b>Tidak ada laporan yang sesuai dengan filter Anda.</b>
+              <p>Coba ubah kata kunci pencarian, kategori, lokasi, rentang tanggal, atau status laporan.</p>
+              {hasActiveFilters && (
+                <button type="button" className="sq-btn sq-btn-lime" onClick={resetFilters}>
+                  Reset Filter
+                </button>
+              )}
             </div>
           )}
         </section>

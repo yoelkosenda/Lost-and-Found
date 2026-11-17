@@ -43,7 +43,7 @@ export default function MyClaimsPage({ user, onLogout }) {
 
           <nav className="sq-nav-links" aria-label="Navigasi Dashboard">
             <Link to="/app" className="sq-nav-item">Dashboard</Link>
-            <Link to="/app/my-claims" className="sq-nav-item active" aria-current="page">Klaim Saya</Link>
+            <Link to="/app/my-claims" className="sq-nav-item active" aria-current="page">Klaim Saya <span className="sq-nav-count">{claims?.length ?? '…'}</span></Link>
           </nav>
 
           <div className="sq-account-bar">
@@ -166,6 +166,9 @@ export default function MyClaimsPage({ user, onLogout }) {
                         <span className="sq-status-text">{status.note || status.label}</span>
                         <span className="sq-claim-code">#LF-{c.report_id}</span>
                       </div>
+                      <Link to={`/app/claims/${c.id}`} className="sq-btn sq-btn-outline sq-claim-open-link">
+                        Buka ruang klaim
+                      </Link>
                     </div>
                   </article>
                 )

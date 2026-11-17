@@ -97,4 +97,22 @@ export const api = {
       p_message: message,
     }),
   myClaims: () => rpc('api_my_claims', { p_token: getToken() }),
+  reportClaims: (reportId) =>
+    rpc('api_report_claims', { p_token: getToken(), p_report_id: Number(reportId) }),
+  claimDetail: (claimId) =>
+    rpc('api_claim_detail', { p_token: getToken(), p_claim_id: Number(claimId) }),
+  claimMessages: (claimId) =>
+    rpc('api_claim_messages', { p_token: getToken(), p_claim_id: Number(claimId) }),
+  sendClaimMessage: (claimId, message) =>
+    rpc('api_send_claim_message', {
+      p_token: getToken(), p_claim_id: Number(claimId), p_message: message,
+    }),
+  decideClaim: (claimId, decision) =>
+    rpc('api_decide_claim', {
+      p_token: getToken(), p_claim_id: Number(claimId), p_decision: decision,
+    }),
+  togglePhoneShare: (claimId, agree) =>
+    rpc('api_toggle_phone_share', {
+      p_token: getToken(), p_claim_id: Number(claimId), p_agree: agree,
+    }),
 }

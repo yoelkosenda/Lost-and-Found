@@ -38,6 +38,13 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS claims (id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER NOT NULL, claimant_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(report_id) REFERENCES reports(id), FOREIGN KEY(claimant_id) REFERENCES users(id));
 `)
 
+// Migrasi aman: kolom bukti kepemilikan klaim (rahasia, hanya untuk verifikasi).
+try {
+  db.exec(`ALTER TABLE claims ADD COLUMN message TEXT DEFAULT ''`)
+} catch (_e) {
+  // Kolom sudah ada
+}
+
 const email = 'student@unklab.ac.id'
 let student = db.prepare('SELECT id FROM users WHERE email = ?').get(email)
 if (!student) {
@@ -52,5 +59,17 @@ if (!db.prepare('SELECT id FROM reports LIMIT 1').get()) {
     ['Lost', 'Kunci motor Honda', 'Kunci', 'Parkiran Fakultas', 'Gantungan kunci biru kecil.', 'Masih dicari', '2026-11-12T15:30:00'],
     ['Found', 'Tumbler hijau', 'Perlengkapan', 'Cafeteria', 'Tumbler tanpa nama di meja dekat kasir.', 'Menunggu pemilik', '2026-11-12T11:15:00'],
   ]) add.run(student.id, ...report)
+}
+
+// Akun demo kedua + barang temuan miliknya, supaya alur klaim bisa dicoba:
+// mahasiswa tidak dapat mengklaim laporan yang ia buat sendiri.
+const finderEmail = 'student2@unklab.ac.id'
+if (!db.prepare('SELECT id FROM users WHERE email = ?').get(finderEmail)) {
+  const finder = db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('Grace Mandagi', finderEmail, bcrypt.hashSync('unklab123', 12))
+  const add = db.prepare('INSERT INTO reports (owner_id, type, title, category, location, description, status, reported_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+  for (const report of [
+    ['Found', 'Kalkulator Casio abu-abu', 'Elektronik', 'GK2 Lantai 1', 'Ditemukan di meja belakang setelah kelas sore.', 'Menunggu pemilik', '2026-11-14T16:40:00'],
+    ['Found', 'Jaket hoodie hitam', 'Pakaian', 'Student Center', 'Tertinggal di kursi dekat pintu masuk.', 'Menunggu pemilik', '2026-11-14T10:05:00'],
+  ]) add.run(finder.lastInsertRowid, ...report)
 }
 export default db

@@ -11,4 +11,9 @@ export const api = {
   logout: () => request('/api/auth/logout', { method: 'POST' }),
   reports: () => request('/api/reports'),
   createReport: (data) => request('/api/reports', { method: 'POST', body: JSON.stringify(data) }),
+  report: (id) => request(`/api/reports/${id}`),
+  publicReports: () => request('/api/reports/public'),
+  activities: () => request('/api/activities'),
+  createClaim: (report_id, message) => request('/api/claims', { method: 'POST', body: JSON.stringify({ report_id, message }) }),
+  myClaims: () => request('/api/claims/my'),
 }

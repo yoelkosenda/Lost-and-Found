@@ -1,77 +1,62 @@
-# Talentflow-inspired Lost & Found — Implementation Plan
+# SquareUp Dark Theme Lost & Found UNKLAB — Implementation Plan
 
-> Prerequisite: approved design at `docs/superpowers/specs/2026-11-14-talentflow-lost-found-auth-design.md`.
+> Prerequisite: approved design at `docs/superpowers/specs/2026-11-14-talentflow-lost-found-auth-design.md` and `docs/design-system.md`.
 
 ## 1. Establish the application boundaries
 
-1. Inspect the current Vite scripts and retain the existing React entry point.
-2. Add server scripts and dependencies for Express, SQLite, password hashing, session cookies, and concurrent local development.
-3. Create a `server/` structure that keeps database setup, middleware, and HTTP routes separate.
-4. Update `.gitignore` to exclude the local SQLite database and local environment files.
+1. Inspect the Vite scripts and retain the React entry point (`src/main.jsx`).
+2. Configure server scripts and dependencies for Express, SQLite (`better-sqlite3`), password hashing (`bcryptjs`), session cookies (`cookie-parser`), and concurrent local development (`concurrently`).
+3. Maintain `server/db.js` and `server/index.js` for SQLite initialization, seed data, session middleware, and API routes.
+4. Ensure `.gitignore` excludes `server/data/lost-and-found.db`, `node_modules`, `dist`, and `.env` files.
 
-**Verification:** `npm install`, `npm run build`, and the local server entry point all start without committing generated database or environment files.
+**Verification:** `npm install`, `npm run build`, and `npm run dev` start cleanly without committing generated database or environment files.
 
 ## 2. Implement persistent local authentication
 
-1. Define SQLite initialization with `users`, `reports`, and `claims` tables and referential constraints.
-2. Add idempotent seed data: one password-hashed UNKLAB student and representative reports/activity.
-3. Add session middleware with a development-safe HTTP-only cookie configuration.
-4. Implement `POST /api/auth/login`, `POST /api/auth/logout`, and `GET /api/auth/me`.
-5. Implement auth middleware and `GET /api/reports` for a signed-in student.
-6. Return consistent JSON error objects and correct `400`, `401`, and `500` HTTP responses.
+1. Define SQLite initialization with `users`, `reports`, and `claims` tables and foreign key constraints.
+2. Add idempotent seed data: one password-hashed UNKLAB student (`student@unklab.ac.id` / `unklab123`) and representative campus reports.
+3. Add HTTP-only session cookie middleware (`lf_session`).
+4. Implement `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, and protected `GET /api/reports`.
 
-**Verification:** manual or automated requests prove valid login, rejected invalid login, protected endpoint rejection, report retrieval after login, and logout invalidation.
+**Verification:** requests verify valid login, rejected invalid login (`401`), protected endpoint rejection (`401`), report retrieval after login, and logout invalidation.
 
-## 3. Build the Talentflow-inspired visual foundation
+## 3. Build the SquareUp Figma Dark Theme visual foundation
 
-1. Replace the old dashboard-only tokens with global variables for warm cream, forest/ink, green action, neutral surfaces, editorial serif, and utility sans-serif fonts.
-2. Add base reset, focus visibility, reduced-motion support, responsive container rules, and shared button/form/card primitives.
-3. Build public and authenticated headers plus a concise footer.
-4. Ensure original Lost & Found text and original visual treatments; do not reuse copyrighted template assets.
+1. Configure `src/styles/global.css` with SquareUp dark theme tokens (`--bg-dark: #1a1a1a`, `--bg-card: #1f1f1f`, `--grey-10` to `--grey-90`, `--green-50: #9eff00` to `--green-99`, `--icon-gradient`) and Google Fonts (`Barlow` and `Inter`).
+2. Store SVG icons, cube brand logo, dot matrices, and wave banner textures in `public/figma/`.
+3. Build shared `.sq-page`, `.sq-container`, `.sq-navbar`, `.sq-section`, `.sq-section-banner`, `.sq-cta-banner`, `.sq-btn` (`.sq-btn-lime`, `.sq-btn-outline`, `.sq-btn-card`), and `.sq-footer` styles.
+4. Add focus visibility (`outline: 2px solid var(--green-50)`), responsive media queries (`1100px`, `800px`, `480px`), and `prefers-reduced-motion` support.
 
-**Verification:** inspect landing, login, and app shell at desktop and narrow mobile widths; verify keyboard focus and no horizontal overflow.
+**Verification:** inspect landing, login, and dashboard at desktop and mobile widths; verify keyboard focus and zero horizontal overflow.
 
 ## 4. Add routes, API adapter, and session guard
 
-1. Install and configure a client-side router (or a minimal route layer if package constraints require it).
-2. Add `src/lib/api.js` with fetch wrappers, credential forwarding, and normalized API errors.
-3. Add an auth context/provider that loads `/api/auth/me`, exposes login/logout, and tracks loading/error state.
-4. Redirect unauthenticated `/app` visits to `/login`; redirect authenticated `/login` visits to `/app`.
+1. Use the lightweight History API router in `src/router.jsx` (`Link`, `navigate`, `usePath`).
+2. Route all HTTP calls exclusively through `src/lib/api.js` with `credentials: 'include'`.
+3. Manage session hydration via `api.me()` in `src/App.jsx`, redirecting unauthenticated `/app` visits to `/login` and authenticated `/login` visits to `/app`.
 
 **Verification:** refresh-safe navigation for public, authenticated, and logged-out states behaves as specified.
 
-## 5. Implement the public landing page
+## 5. Implement the public landing page (`src/pages/LandingPage.jsx`)
 
-1. Build the hero, header, proof/statistics, three-step process, recent-report preview, closing CTA, and footer.
-2. Use seeded reports in the recent-report preview through a public-safe source or a static preview subset.
-3. Wire all auth-facing CTAs to `/login` and ensure anchors navigate predictably.
+1. Build the sticky `.sq-navbar`, `.sq-hero` with SVG topographic terrain, `.sq-trust-bar`, 3-column `#layanan` grid, 2x2 `#laporan` preview grid, 2x2 `#cara-kerja` process steps, 2x2 `#keunggulan` cards, interactive `#faq` accordion, `.sq-cta-banner`, and `.sq-footer`.
+2. Wire all portal CTAs to `/login` and ensure section anchors scroll smoothly.
 
-**Verification:** content hierarchy matches the design specification, all CTAs work, and the page reflows to one column on mobile.
+**Verification:** content hierarchy matches the SquareUp dark theme specification, FAQ toggles work, and grids collapse cleanly to 1 column on mobile.
 
-## 6. Implement login
+## 6. Implement student login (`src/pages/LoginPage.jsx`)
 
-1. Build the two-panel editorial login layout and mobile single-column fallback.
-2. Implement controlled email/password inputs, visible labels, show/hide password control, inline validation, and loading feedback.
-3. Connect submit to the API and show invalid-credential or network errors without revealing account existence.
-4. Present local demo credentials only in development-facing copy.
+1. Build the login banner (`.sq-login-banner`) and form container (`.sq-login-shell` & `.sq-form-box`).
+2. Implement controlled email/password `.sq-input-card` fields, visible `.sq-input-label`, `.sq-password-toggle`, `.sq-access-card` feature checklist, inline error alert (`.sq-form-error`), and submit loading feedback.
+3. Display local demo credentials inside `.sq-demo-pill`.
 
-**Verification:** valid demo login reaches `/app`; invalid data remains on the form with a useful error; keyboard submit and focus order work.
+**Verification:** valid demo login reaches `/app`; invalid data shows `.sq-form-error`; keyboard submit and focus order work.
 
-## 7. Implement the authenticated main menu
+## 7. Implement the authenticated dashboard (`src/pages/DashboardPage.jsx`)
 
-1. Add authenticated header with student identity and logout.
-2. Create welcome/CTA panel, report summary cards, report search/type controls, report cards, and activity panel.
-3. Fetch reports through the API adapter, calculate or render summary values, and filter client-side after data loads.
-4. Implement loading skeleton/state, no-results state, and error state with retry.
-5. Keep report creation as an accessible, clearly labeled non-creating placeholder until its feature is implemented.
+1. Add authenticated `.sq-navbar` with `.sq-user-chip` and `.sq-logout-btn`.
+2. Create `.sq-dash-hero` welcome banner with `.sq-dash-highlight`, 3-column `.sq-dash-stats` (`LOST`, `FOUND`, `TOTAL`), `.sq-dash-toolbar` (search + type filter), 2-column `.sq-report-grid` of `.sq-report-card` items, and `#aktivitas` banner.
+3. Fetch reports through `api.reports()`, compute summary counts, and filter client-side by query and type.
+4. Implement loading state, no-results state, and error state with retry (`.sq-state`).
 
-**Verification:** report data renders from SQLite; search and report type filter update the list; empty/error/retry states are reachable and readable.
-
-## 8. Document and validate
-
-1. Update the README with development commands, local database behavior, and demo login credentials.
-2. Run the frontend production build and backend/API verification suite.
-3. Review staged files for database artifacts, environment files, and secrets.
-4. Commit each coherent implementation slice only after its relevant checks pass.
-
-**Final acceptance:** all verification points in the approved design specification pass, the site is responsive, and a local student can log in, see the main menu, and log out using persisted SQLite-backed data.
+**Verification:** report data renders from SQLite; search and type filter update the grid; empty/error/retry states are reachable and readable.

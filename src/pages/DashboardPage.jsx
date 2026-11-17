@@ -1,19 +1,37 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
-import { Link } from '../router.jsx'
+import { Link, navigate } from '../router.jsx'
+import ClaimAction from '../components/claims/ClaimAction.jsx'
 
 export default function DashboardPage({ user, onLogout }) {
   const [data, setData] = useState(null)
+  const [claims, setClaims] = useState([])
+  const [activityData, setActivityData] = useState(null)
+  const [activityError, setActivityError] = useState('')
   const [query, setQuery] = useState('')
   const [type, setType] = useState('Semua')
   const [error, setError] = useState('')
 
   const load = () => {
     setError('')
+    setActivityError('')
     api.reports().then(setData).catch((e) => setError(e.message))
+    // Riwayat klaim hanya dipakai untuk menandai kartu; kegagalannya tidak boleh menutupi daftar laporan.
+    api.myClaims().then(({ claims }) => setClaims(claims)).catch(() => {})
+    api
+      .activities()
+      .then(setActivityData)
+      .catch((e) => setActivityError(e.message))
   }
 
   useEffect(load, [])
+
+  // Status klaim terbaru user per laporan (daftar klaim sudah terurut dari yang terbaru).
+  const claimStatusByReport = useMemo(() => {
+    const map = new Map()
+    for (const c of claims) if (!map.has(c.report_id)) map.set(c.report_id, c.status)
+    return map
+  }, [claims])
 
   const reports = useMemo(
     () =>
@@ -51,6 +69,7 @@ export default function DashboardPage({ user, onLogout }) {
             <a href="#ringkasan" className="sq-nav-item active">Ringkasan</a>
             <a href="#laporan" className="sq-nav-item">Laporan</a>
             <a href="#aktivitas" className="sq-nav-item">Aktivitas</a>
+            <Link to="/app/my-claims" className="sq-nav-item">Klaim Saya</Link>
           </nav>
 
           <div className="sq-account-bar">
@@ -93,6 +112,10 @@ export default function DashboardPage({ user, onLogout }) {
                 <a href="#laporan" className="sq-btn sq-btn-outline">
                   Jelajahi Laporan ↓
                 </a>
+                {/* .sq-nav-links disembunyikan di layar <= 800px, jadi tautan ini menjaga akses di mobile. */}
+                <Link to="/app/my-claims" className="sq-btn sq-btn-outline">
+                  Klaim Saya ↗
+                </Link>
               </div>
             </div>
 
@@ -188,7 +211,21 @@ export default function DashboardPage({ user, onLogout }) {
           ) : reports.length ? (
             <div className="sq-report-grid">
               {reports.map((r) => (
-                <article className={`sq-report-card ${r.type.toLowerCase()}`} key={r.id}>
+                <article
+                  className={`sq-report-card ${r.type.toLowerCase()}`}
+                  key={r.id}
+                  onClick={() => navigate(`/app/reports/${r.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      navigate(`/app/reports/${r.id}`)
+                    }
+                  }}
+                  role="link"
+                  tabIndex={0}
+                  style={{ cursor: 'pointer' }}
+                  aria-label={`Lihat detail ${r.title}`}
+                >
                   <div className="sq-report-card-header">
                     <span className="sq-report-type-label">
                       {r.type === 'Lost' ? 'BARANG HILANG' : 'BARANG DITEMUKAN'}
@@ -223,6 +260,13 @@ export default function DashboardPage({ user, onLogout }) {
 
                     {r.description && <p className="sq-report-desc">{r.description}</p>}
 
+                    <ClaimAction
+                      report={r}
+                      user={user}
+                      existingStatus={claimStatusByReport.get(r.id)}
+                      onClaimed={load}
+                    />
+
                     <div className="sq-report-footer">
                       <span className="sq-status-text">{r.status}</span>
                       <span className="sq-icon-action sm" aria-hidden="true">
@@ -240,8 +284,98 @@ export default function DashboardPage({ user, onLogout }) {
           )}
         </section>
 
-        {/* ACTIVITY / COMMUNITY FOOTER BANNER */}
-        <section id="aktivitas" className="sq-cta-banner">
+        {/* ACTIVITY FEED SECTION */}
+        <section id="aktivitas" className="sq-section">
+          <div className="sq-dash-toolbar">
+            <div>
+              <span className="sq-kicker-pill">AKTIVITAS KOMUNITAS</span>
+              <h2>Jejak Laporan & Klaim Terbaru</h2>
+            </div>
+            <p className="sq-activity-sub">
+              Pantauan real-time laporan barang dan pengajuan klaim di lingkungan kampus UNKLAB.
+            </p>
+          </div>
+
+          {activityError ? (
+            <div className="sq-state error">
+              <b>{activityError}</b>
+              <button type="button" className="sq-btn sq-btn-lime" onClick={load}>
+                Muat ulang aktivitas
+              </button>
+            </div>
+          ) : !activityData ? (
+            <div className="sq-state">Memuat aktivitas komunitas…</div>
+          ) : activityData.activities?.length ? (
+            <div className="sq-activity-grid">
+              {activityData.activities.map((act) => {
+                const isClaim = act.activity_type === 'claim'
+                const isFound = act.item_type === 'Found'
+                const badgeClass = isClaim ? 'claim' : isFound ? 'found' : 'lost'
+                const iconSrc = isClaim
+                  ? '/figma/icon-service-3.svg'
+                  : isFound
+                    ? '/figma/icon-service-2.svg'
+                    : '/figma/icon-service-1.svg'
+                const activityTitle = isClaim
+                  ? `Pengajuan klaim baru untuk: ${act.title}`
+                  : isFound
+                    ? `Laporan Barang Ditemukan baru: ${act.title} di ${act.location}`
+                    : `Laporan Barang Hilang baru: ${act.title} di ${act.location}`
+                const statusLabel =
+                  act.status === 'pending'
+                    ? 'Dalam verifikasi'
+                    : act.status === 'approved'
+                      ? 'Klaim disetujui'
+                      : act.status === 'rejected'
+                        ? 'Klaim ditolak'
+                        : act.status
+
+                return (
+                  <article
+                    className={`sq-activity-card ${badgeClass}`}
+                    key={`${act.activity_type}-${act.id}`}
+                  >
+                    <div className="sq-activity-top">
+                      <div className="sq-icon-badge sm">
+                        <img src={iconSrc} alt="" width="28" height="28" />
+                      </div>
+                      <div className="sq-activity-badges">
+                        <span className="sq-activity-type-tag">
+                          {isClaim
+                            ? 'KLAIM BARANG'
+                            : isFound
+                              ? 'LAPORAN TEMUAN'
+                              : 'LAPORAN KEHILANGAN'}
+                        </span>
+                        <em className={`sq-status-badge ${badgeClass}`}>{statusLabel}</em>
+                      </div>
+                    </div>
+
+                    <h3 className="sq-activity-title">{activityTitle}</h3>
+
+                    <div className="sq-activity-footer">
+                      <span className="sq-work-pill">Lokasi · {act.location}</span>
+                      <time className="sq-activity-time" dateTime={act.created_at}>
+                        {new Date(act.created_at).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </time>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="sq-state">Belum ada aktivitas komunitas terbaru.</div>
+          )}
+        </section>
+
+        {/* COMMUNITY FOOTER BANNER */}
+        <section className="sq-cta-banner">
           <img src="/figma/cta-wave.png" alt="" className="sq-banner-wave" aria-hidden="true" />
           <div className="sq-banner-dots" aria-hidden="true" />
           <div className="sq-banner-tint" aria-hidden="true" />

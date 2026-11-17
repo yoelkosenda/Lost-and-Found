@@ -1,21 +1,87 @@
-async function request(path, options = {}) {
-  const response = await fetch(path, { credentials: 'include', headers: { 'Content-Type': 'application/json', ...options.headers }, ...options })
-  if (response.status === 204) return null
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || 'Permintaan tidak dapat diproses.')
-  return body
+import { supabase } from './supabase.js'
+
+const SESSION_KEY = 'lf_session_token'
+
+function getToken() {
+  try {
+    return localStorage.getItem(SESSION_KEY) || ''
+  } catch {
+    return ''
+  }
 }
+
+function setToken(token) {
+  try {
+    if (token) localStorage.setItem(SESSION_KEY, token)
+    else localStorage.removeItem(SESSION_KEY)
+  } catch {
+    // Ignore storage errors in restricted environments
+  }
+}
+
+async function rpc(fnName, params = {}) {
+  const { data, error } = await supabase.rpc(fnName, params)
+  if (error) {
+    throw new Error(error.message || 'Permintaan tidak dapat diproses.')
+  }
+  return data
+}
+
 export const api = {
-  me: () => request('/api/auth/me'),
-  login: (email, password) => request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  logout: () => request('/api/auth/logout', { method: 'POST' }),
-  reports: () => request('/api/reports'),
-  myReports: () => request('/api/reports/my'),
-  updateReportStatus: (id, status) => request(`/api/reports/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  createReport: (data) => request('/api/reports', { method: 'POST', body: JSON.stringify(data) }),
-  report: (id) => request(`/api/reports/${id}`),
-  publicReports: () => request('/api/reports/public'),
-  activities: () => request('/api/activities'),
-  createClaim: (report_id, message) => request('/api/claims', { method: 'POST', body: JSON.stringify({ report_id, message }) }),
-  myClaims: () => request('/api/claims/my'),
+  async me() {
+    const token = getToken()
+    if (!token) throw new Error('Sesi Anda telah berakhir. Silakan masuk kembali.')
+    try {
+      return await rpc('api_me', { p_token: token })
+    } catch (err) {
+      setToken('')
+      throw err
+    }
+  },
+  async login(email, password) {
+    const data = await rpc('api_login', { p_email: email, p_password: password })
+    setToken(data.token)
+    return { user: data.user }
+  },
+  async logout() {
+    const token = getToken()
+    setToken('')
+    if (token) {
+      await rpc('api_logout', { p_token: token }).catch(() => null)
+    }
+    return null
+  },
+  reports: () => rpc('api_reports', { p_token: getToken() }),
+  myReports: () => rpc('api_my_reports', { p_token: getToken() }),
+  updateReportStatus: (id, status) =>
+    rpc('api_update_report_status', {
+      p_token: getToken(),
+      p_report_id: Number(id),
+      p_status: status,
+    }),
+  createReport: (data) =>
+    rpc('api_create_report', {
+      p_token: getToken(),
+      p_type: data.type,
+      p_title: data.title,
+      p_category: data.category,
+      p_location: data.location,
+      p_description: data.description,
+      p_reported_at: data.reported_at || null,
+      p_image_url: data.image_url || null,
+    }),
+  report: (id) =>
+    rpc('api_report_detail', {
+      p_token: getToken(),
+      p_report_id: Number(id),
+    }),
+  publicReports: () => rpc('api_public_reports'),
+  activities: () => rpc('api_activities', { p_token: getToken() }),
+  createClaim: (report_id, message) =>
+    rpc('api_create_claim', {
+      p_token: getToken(),
+      p_report_id: Number(report_id),
+      p_message: message,
+    }),
+  myClaims: () => rpc('api_my_claims', { p_token: getToken() }),
 }

@@ -12,4 +12,10 @@ export const api = {
   reports: () => request('/api/reports'),
   myReports: () => request('/api/reports/my'),
   updateReportStatus: (id, status) => request(`/api/reports/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  createReport: (data) => request('/api/reports', { method: 'POST', body: JSON.stringify(data) }),
+  report: (id) => request(`/api/reports/${id}`),
+  publicReports: () => request('/api/reports/public'),
+  activities: () => request('/api/activities'),
+  createClaim: (report_id, message) => request('/api/claims', { method: 'POST', body: JSON.stringify({ report_id, message }) }),
+  myClaims: () => request('/api/claims/my'),
 }

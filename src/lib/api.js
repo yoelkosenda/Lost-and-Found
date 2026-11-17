@@ -94,6 +94,11 @@ export const api = {
       p_token: getToken(),
       p_report_id: Number(id),
     }),
+  reportHistory: (id) =>
+    rpc('api_report_history', {
+      p_token: getToken(),
+      p_report_id: Number(id),
+    }),
   publicReports: () => rpc('api_public_reports'),
   activities: () => rpc('api_activities', { p_token: getToken() }),
   createClaim: (report_id, message) =>
@@ -111,4 +116,22 @@ export const api = {
   markNotificationsRead: () => rpc('api_mark_notifications_read', { p_token: getToken() }),
   smartMatches: (reportId) =>
     rpc('api_smart_matches', { p_token: getToken(), p_report_id: Number(reportId) }),
+  reportClaims: (reportId) =>
+    rpc('api_report_claims', { p_token: getToken(), p_report_id: Number(reportId) }),
+  claimDetail: (claimId) =>
+    rpc('api_claim_detail', { p_token: getToken(), p_claim_id: Number(claimId) }),
+  claimMessages: (claimId) =>
+    rpc('api_claim_messages', { p_token: getToken(), p_claim_id: Number(claimId) }),
+  sendClaimMessage: (claimId, message) =>
+    rpc('api_send_claim_message', {
+      p_token: getToken(), p_claim_id: Number(claimId), p_message: message,
+    }),
+  decideClaim: (claimId, decision) =>
+    rpc('api_decide_claim', {
+      p_token: getToken(), p_claim_id: Number(claimId), p_decision: decision,
+    }),
+  togglePhoneShare: (claimId, agree) =>
+    rpc('api_toggle_phone_share', {
+      p_token: getToken(), p_claim_id: Number(claimId), p_agree: agree,
+    }),
 }

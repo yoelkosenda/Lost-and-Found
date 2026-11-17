@@ -195,7 +195,7 @@ export default function DashboardPage({ user, onLogout }) {
           ) : reports.length ? (
             <div className="sq-report-grid">
               {reports.map((r) => (
-                <article className={`sq-report-card ${r.type.toLowerCase()}`} key={r.id}>
+                <Link to={`/app/reports/${r.id}`} className={`sq-report-card ${r.type.toLowerCase()}`} key={r.id} aria-label={`Lihat detail ${r.title}`}>
                   <div className="sq-report-card-header">
                     <span className="sq-report-type-label">
                       {r.type === 'Lost' ? 'BARANG HILANG' : 'BARANG DITEMUKAN'}
@@ -237,7 +237,7 @@ export default function DashboardPage({ user, onLogout }) {
                       </span>
                     </div>
                   </div>
-                </article>
+                </Link>
               ))}
             </div>
           ) : (

@@ -1,248 +1,192 @@
-# Lost & Found UNKLAB — Design System
+# Lost & Found UNKLAB — Design System (SquareUp Figma Dark Theme)
 
-Dokumen ini adalah sumber acuan visual dan interaksi untuk seluruh halaman website Lost & Found UNKLAB. Semua halaman baru—Lost Items, Found Items, Detail Barang, Report Item, AI Matching, My Reports, Notifications, Profile, dan Admin Panel—harus mengikuti aturan di sini agar tetap terasa sebagai satu produk.
+Dokumen ini adalah sumber acuan visual dan interaksi untuk seluruh halaman website **Lost & Found UNKLAB**. Semua halaman—Landing Page (`/`), Login (`/login`), Dashboard Komunitas (`/app`), Buat Laporan (`/app/reports/new`), Detail Barang (`/app/reports/:id`), Laporan Saya (`/app/my-reports`), dan Riwayat Klaim (`/app/my-claims`)—wajib mengikuti aturan di sini agar tetap konsisten sebagai satu produk.
 
-Versi: 1.0
-Tanggal: 13 November 2026
-Basis: desain awal halaman Home/Dashboard dan wireframe beranda.
+Versi: 2.0 (SquareUp Dark Theme Adaptation)
+Tanggal: 17 November 2026
+Basis: Adaptasi template Figma **SquareUp Dark Theme** untuk portal komunitas mahasiswa UNKLAB.
 
-## 1. Prinsip desain
+---
+
+## 1. Prinsip Desain
 
 ### Jelas sebelum dekoratif
+Pengguna harus langsung memahami jenis laporan (`Lost` / `Found`), lokasi kampus, waktu, status, dan tindakan yang tersedia. Tekstur *wave*, *dot matrix*, dan aksen hijau neon dipakai untuk memperkuat struktur seksi, bukan menutupi keterbacaan informasi.
 
-Pengguna harus langsung memahami jenis laporan, lokasi, waktu, status, dan tindakan yang tersedia. Jangan menambahkan ornamen yang mengganggu hierarki informasi.
-
-### Tenang, terpercaya, dan ramah komunitas
-
-Produk ini membantu mahasiswa mengembalikan barang. Gunakan ruang kosong, warna lembut, dan bahasa yang sederhana. Aksen warna dipakai untuk membantu orientasi, bukan untuk menghias setiap elemen.
+### Gelap modern, terstruktur, dan ramah komunitas
+Produk ini membantu mahasiswa Universitas Klabat menemukan kembali barang berharga mereka. Gunakan kontras tinggi di atas permukaan gelap (`#1A1A1A`), garis batas arsitektural tipis (`1px solid #262626`), dan aksen hijau limau elektrik (`#9EFF00`) sebagai penunjuk fokus serta aksi utama.
 
 ### Satu tindakan utama per area
-
-Setiap halaman harus memiliki satu CTA utama yang paling menonjol. CTA sekunder tidak boleh memiliki bobot visual yang sama.
+Setiap halaman atau banner harus memiliki satu CTA utama berwarna hijau limau (`.sq-btn-lime`) yang paling menonjol. Aksi sekunder menggunakan tombol berbingkai gelap transparan (`.sq-btn-outline` atau `.sq-btn-card`).
 
 ### Privasi sejak tampilan pertama
+Nomor telepon pribadi, email pribadi, password hash, dan bukti kepemilikan rahasia tidak boleh tampil pada kartu laporan publik. Gunakan status verifikasi dan sistem klaim terproteksi sebagai pengganti kontak langsung.
 
-Nomor telepon, bukti kepemilikan, dan data pribadi tidak boleh tampil pada kartu publik. Gunakan pesan internal atau status verifikasi sebagai pengganti kontak langsung.
+---
 
-## 2. Arah visual
+## 2. Arah Visual & Karakter Tampilan
 
-Visual menggunakan dashboard yang bersih dengan fondasi navy, permukaan putih, latar abu-abu sangat terang, dan aksen kuning hangat. Bentuk komponen membulat ringan, bukan pill berlebihan. Panel utama boleh memakai ilustrasi geometris sederhana, tetapi konten tetap menjadi fokus.
+Visual mengadaptasi estetika **SquareUp Dark UI**: latar belakang karbon gelap (`#1A1A1A`), grid berbingkai tegas (`#262626`), banner seksi bertekstur gelombang (*topographic/wave overlay*) dengan bintik halus (*dot grid*), badge ikon bergradasi hijau halus, serta tombol CTA hijau neon (`#9EFF00`).
 
 ### Karakter tampilan
+- **Navigasi Atas (`.sq-navbar`):** Sticky topbar dengan efek *glassmorphism* (`backdrop-filter: blur(12px)`), logo kubus hijau (`.sq-brand-box` + `/figma/logo-cube.svg`), tautan navigasi tengah (`.sq-nav-links`), dan panel akun/CTA di sisi kanan.
+- **Grid Berbingkai (`.sq-section`):** Setiap bagian halaman berada di dalam kontainer `.sq-container` (`max-width: 1596px`) dengan garis tepi kiri, kanan, dan bawah `1px solid var(--grey-15)`.
+- **Banner Seksi (`.sq-section-banner` & `.sq-cta-banner`):** Header bagian tengah dengan latar `#171B12`, gambar gelombang `/figma/banner-wave-*.png` (`mix-blend-mode: overlay`), `/figma/banner-dots.png`, dan sorotan radial hijau halus (`.sq-banner-tint`).
+- **Ikon & Aset Visual:** Tersimpan di `public/figma/` menggunakan ikon outline hijau neon (`#9EFF00`) di dalam wadah `.sq-icon-badge` bergradasi gelap.
 
-- Desktop: sidebar tetap di kiri, konten utama memiliki scroll terpisah.
-- Mobile: sidebar berubah menjadi drawer yang dibuka melalui tombol menu.
-- Kartu: permukaan putih, border tipis, radius sedang, shadow sangat halus.
-- Aksen: gunakan navy untuk struktur, biru untuk aksi, kuning untuk penekanan, dan warna status untuk makna operasional.
-- Ikon: sederhana, outline, konsisten dalam ukuran dan stroke.
+---
 
-## 3. Design tokens
+## 3. Design Tokens (`src/styles/global.css`)
 
-### Warna
+### Warna Utama
 
-| Token | Hex | Penggunaan |
+| Token CSS | Hex / Nilai | Penggunaan |
 | --- | --- | --- |
-| `--navy` | `#1F2B4A` | Sidebar, hero, heading penting, primary button |
-| `--blue` | `#5069D9` | Link, active navigation, fokus, secondary action |
-| `--page-bg` | `#F6F7FB` | Latar halaman utama |
-| `--surface` | `#FFFFFF` | Card, input, sidebar, panel |
-| `--line` | `#E8EBF1` | Border, divider, timeline |
-| `--text` | `#1F2735` | Teks utama |
-| `--muted` | `#7E8798` | Teks sekunder dan metadata |
-| `--subtle` | `#A2A9B7` | Label, placeholder, caption |
-| `--gold` | `#F2B86C` | Aksen hero dan CTA emosional |
-| `--peach` | `#FFF0E6` | Latar status/barang hilang |
-| `--mint` | `#E5F2ED` | Latar status selesai/barang ditemukan |
-| `--lavender` | `#EEE9FB` | Latar status verifikasi |
-| `--yellow-soft` | `#FFF6DA` | Latar status menunggu |
+| `--bg-dark` | `#1a1a1a` | Latar belakang utama seluruh halaman (`body`, `.sq-page`) |
+| `--bg-card` | `#1f1f1f` | Permukaan alternatif kartu dan panel dalam |
+| `--grey-10` | `#191919` | Permukaan gelap terdalam |
+| `--grey-15` | `#262626` | Garis batas struktural utama (border seksi, kartu, pill, tombol sekunder) |
+| `--grey-20` | `#333333` | Border input, badge, kontrol form, dan kartu sorotan |
+| `--grey-30` | `#4c4c4d` | Border aktif/hover pada kontrol sekunder |
+| `--grey-40` | `#656567` | Warna placeholder input |
+| `--grey-60` | `#98989a` | Teks sekunder, metadata, tanggal, dan deskripsi pendukung |
+| `--grey-90` | `#e6e6e6` | Teks body utama dan tautan navigasi |
+| `--white` | `#ffffff` | Judul utama (`h1`, `h2`, `h3`), label penting, dan angka statistik |
+| `--green-50` | `#9eff00` | Warna aksen primer, CTA utama (`.sq-btn-lime`), fokus keyboard, ikon aktif |
+| `--green-60` | `#b1ff33` | State hover untuk tombol CTA utama (`.sq-btn-lime:hover`) |
+| `--green-70` | `#c5ff66` | Aksen teks sorotan pada judul (`h1 span`), badge UNKLAB, FAQ terbuka |
+| `--green-80` | `#d8ff99` | Angka besar proses (`.sq-process-num`) dan teks status kaki kartu |
+| `--green-99` | `#fdfffa` | Teks putih kehijauan lembut pada pill kepercayaan & checklist |
+| `--icon-gradient` | `linear-gradient(229.29deg, rgba(158,255,0,0.2) 0%, rgba(158,255,0,0) 68.25%), linear-gradient(180deg, #242424 0%, rgba(36,36,36,0) 100%)` | Latar belakang wadah ikon `.sq-icon-badge` dan `.sq-visual-orb` |
 
-Warna baru hanya boleh ditambahkan jika memiliki makna UI yang jelas. Jangan memakai warna random per halaman.
+Jangan membuat warna acak di luar palet di atas tanpa alasan fungsional yang jelas.
 
-### Status laporan
+### Badge & Status Laporan (`.sq-status-badge`)
 
-| Status | Latar | Teks | Makna |
-| --- | --- | --- | --- |
-| Masih Dicari | `#FFF0E7` | `#C8794D` | Laporan lost masih aktif |
-| Sudah Ditemukan | `#E5F2ED` | `#5C9B83` | Informasi barang sudah ditemukan |
-| Menunggu Pemilik | `#FFF6DA` | `#AD8125` | Barang found belum diklaim |
-| Sedang Diklaim | `#EEE9FB` | `#7967B9` | Ada klaim yang sedang diproses |
-| Dalam Verifikasi | `#EEE9FB` | `#7967B9` | Bukti kepemilikan sedang ditinjau |
-| Sudah Dikembalikan | `#E5F2ED` | `#5C9B83` | Serah-terima sudah selesai |
-| Dibatalkan / Ditutup | `#EEF0F3` | `#697386` | Laporan tidak lagi aktif |
+Status laporan **WAJIB** selalu ditampilkan dengan teks yang jelas, tidak boleh hanya mengandalkan warna:
 
-Status harus selalu ditampilkan dengan teks, bukan warna saja.
+| Kategori / Status | Class CSS | Latar (`background`) | Border | Teks | Makna Operasional |
+| --- | --- | --- | --- | --- | --- |
+| **Found** (`Menunggu pemilik`, `Sudah ditemukan`, `Sudah dikembalikan`) | `.sq-status-badge.found` | `rgba(158, 255, 0, 0.12)` | `rgba(158, 255, 0, 0.35)` | `#9eff00` (`--green-50`) | Barang temuan siap diklaim atau laporan telah tuntas |
+| **Lost** (`Masih dicari`) | `.sq-status-badge.lost` | `rgba(255, 179, 71, 0.12)` | `rgba(255, 179, 71, 0.35)` | `#ffc470` | Barang hilang masih aktif dicari pemiliknya |
+| **Verifikasi / Klaim** (`Sedang diklaim`, `Dalam verifikasi`) | `.sq-status-badge` | `rgba(38, 38, 38, 0.75)` | `#333333` (`--grey-20`) | `#d8ff99` (`--green-80`) | Klaim sedang diajukan dan menunggu verifikasi |
+| **Ditutup** (`Dibatalkan / Ditutup`) | `.sq-status-badge` | `#262626` (`--grey-15`) | `#333333` (`--grey-20`) | `#98989a` (`--grey-60`) | Laporan sudah ditutup atau dibatalkan |
 
 ### Tipografi
 
-Gunakan dua keluarga font:
+Menggunakan dua keluarga font Google Fonts:
+- **`Barlow`** (`400`, `500`, `600`, `700`): Font utama untuk heading, navigasi, tombol, statistik, dan struktur UI.
+- **`Inter`** (`400`, `500`, `600`): Font pendukung untuk paragraf deskripsi kartu dan nomor kode laporan.
 
-- `Manrope`: heading, brand, angka statistik, dan judul card.
-- `DM Sans`: body text, label, metadata, input, dan tombol.
-
-| Peran | Font | Ukuran desktop | Weight | Catatan |
+| Peran | Font | Ukuran Desktop | Weight | Catatan |
 | --- | --- | --- | --- | --- |
-| Page title | Manrope | 28–32px | 800 | Letter spacing sekitar `-1.2px` |
-| Section heading | Manrope | 18–20px | 700 | Singkat dan langsung |
-| Card title | Manrope | 13–14px | 700 | Satu baris bila memungkinkan |
-| Body | DM Sans | 12–14px | 400–500 | Line-height 1.5–1.6 |
-| Label/eyebrow | DM Sans | 10px | 700 | Uppercase, letter spacing 1.25px |
-| Metadata | DM Sans | 10–11px | 400–500 | Warna muted |
-| Button | DM Sans | 11–13px | 700 | Gunakan kata kerja |
+| Hero Title (`h1`) | `Barlow` | `clamp(40px, 5.2vw, 68px)` | `600` | Line-height `1.15`, sorotan `span` memakai `--green-70` |
+| Dashboard Hero (`h1`) | `Barlow` | `clamp(34px, 4.2vw, 56px)` | `600` | Line-height `1.12` |
+| Section Heading (`h2`) | `Barlow` | `clamp(30px, 3.6vw, 46px)` | `600` | Putih (`--white`), rata tengah pada `.sq-section-banner` |
+| Card Title (`h3`) | `Barlow` | `24px–26px` | `500–600` | Putih (`--white`) atau `--grey-90` |
+| Stat Number (`strong`) | `Barlow` | `44px–56px` | `600–700` | Line-height `1–1.05` |
+| Process Number | `Barlow` | `clamp(68px, 7vw, 112px)` | `600` | Warna `--green-80` (`#d8ff99`) |
+| Body & Deskripsi | `Barlow` / `Inter` | `15px–17px` | `400–500` | Line-height `1.6–1.65`, warna `--grey-90` atau `--grey-60` |
+| Kicker Pill (`.sq-kicker-pill`) | `Barlow` | `12px` | `700` | Uppercase, letter-spacing `1.4px`, teks `--green-50` |
+| Button (`.sq-btn`) | `Barlow` | `14px–17px` | `500–600` | Border-radius `8px` |
 
-Jika font tidak tersedia, fallback harus tetap sans-serif: `Manrope, DM Sans, sans-serif`.
+---
 
-### Spacing dan bentuk
+## 4. Layout & Navigasi
 
-Gunakan kelipatan 4px sebagai dasar:
+### Struktur Halaman (`.sq-page` & `.sq-container`)
 
-| Token | Nilai | Penggunaan |
-| --- | --- | --- |
-| `space-1` | 4px | Jarak ikon dan label kecil |
-| `space-2` | 8px | Gap metadata |
-| `space-3` | 12px | Padding input kecil |
-| `space-4` | 16px | Gap card dan toolbar |
-| `space-5` | 20px | Padding card |
-| `space-6` | 24px | Gap antar blok |
-| `space-8` | 32px | Jarak section |
-| `space-10` | 40px | Padding halaman |
-
-| Token | Nilai | Penggunaan |
-| --- | --- | --- |
-| `radius-sm` | 6px | Badge/status dan kontrol kecil |
-| `radius-md` | 8–10px | Button, input, report card |
-| `radius-lg` | 12–14px | Stat card dan panel |
-| `radius-xl` | 18px | Hero/panel utama |
-| `shadow-card` | `0 8px 20px rgba(31,43,74,.06)` | Hover card saja |
-
-## 4. Layout dan navigasi
-
-### App shell
-
-Pada desktop, gunakan dua kolom:
+Berbeda dari layout sidebar lama, sistem desain baru menggunakan **arsitektur halaman penuh berbingkai (top-navigation container layout)**:
 
 ```text
-┌────────────────────┬─────────────────────────────────────┐
-│ Sidebar / Dashboard │ Topbar                              │
-│ tetap 250px         ├─────────────────────────────────────┤
-│ tinggi viewport     │ Main content dengan scroll sendiri  │
-│                     │                                     │
-└────────────────────┴─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ .sq-navbar (Sticky Topbar, backdrop blur, tinggi min 96px)          │
+├──────────────────────────────────────────────────────────────────────┤
+│ .sq-container (lebar maks 1596px, margin auto, border struktural)   │
+│   ├── .sq-hero / .sq-dash-hero / .sq-cta-banner                     │
+│   ├── .sq-dash-stats / .sq-trust-bar                                │
+│   └── .sq-section (Grid 2 atau 3 kolom dengan border 1px #262626)   │
+├──────────────────────────────────────────────────────────────────────┤
+│ .sq-footer (Kontak kampus, navigasi bawah, dan hak cipta)           │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-- Sidebar desktop: lebar sekitar 250px, tinggi `100vh`, tidak ikut scroll konten.
-- Main content: tinggi `100vh`, `overflow-y: auto`.
-- Topbar: tinggi sekitar 65–80px, selalu berada di dalam area main content.
-- Padding desktop halaman: sekitar 5vw horizontal, 32–44px vertikal.
-- Lebar konten maksimum: sekitar 1300px.
+- **Lebar Kontainer (`.sq-container`):** `width: min(1596px, calc(100% - 64px))` pada desktop, dan `calc(100% - 32px)` pada layar `<= 800px`.
+- **Navbar (`.sq-navbar`):** Memuat `.sq-brand` di kiri, `.sq-nav-links` di tengah, dan `.sq-nav-cta` atau `.sq-account-bar` (chip profil mahasiswa + tombol `Keluar ↗`) di kanan.
 
-### Sidebar
+### Breakpoint Responsif
 
-Urutan navigasi utama:
+- **`<= 1100px`:**
+  - `.sq-trust-grid` menjadi 3 kolom.
+  - `.sq-services-grid` dan `.sq-dash-hero-grid` berubah menjadi 1 kolom.
+- **`<= 800px`:**
+  -Lebar kontainer menyesuaikan ke `calc(100% - 32px)`.
+  - `.sq-nav-links` disembunyikan agar header tetap ringkas di layar mobile.
+  - Seluruh grid multi-kolom (`.sq-works-grid`, `.sq-process-grid`, `.sq-why-grid`, `.sq-faq-grid`, `.sq-form-row`, `.sq-check-grid`, `.sq-dash-stats`, `.sq-report-grid`) berubah menjadi **1 kolom** dengan pembatas `border-bottom: 1px solid var(--grey-15)`.
+  - Input pencarian dan dropdown filter melebar `100%`.
+- **`<= 480px`:**
+  - Tombol aksi pada `.sq-hero-actions` tersusun vertikal (`flex-direction: column`) dan melebar penuh (`width: 100%`).
 
-1. Beranda
-2. Barang Hilang
-3. Barang Ditemukan
-4. Laporan Saya
+---
 
-Area bantuan dan akun berada di bagian bawah. Item aktif memakai latar biru muda, ikon biru, dan indikator vertikal biru di sisi kanan.
+## 5. Komponen Standar
 
-Halaman baru tidak boleh membuat sidebar versi sendiri. Gunakan komponen layout yang sama dan hanya ubah item aktif.
+### 1. Tombol (`.sq-btn`)
+- **Primary CTA (`.sq-btn.sq-btn-lime`):** Background `--green-50` (`#9eff00`), teks `--grey-15` (`#262626`), `font-weight: 600`. Saat hover: background `--green-60` dengan glow hijau `0 10px 26px rgba(158, 255, 0, 0.22)`.
+- **Secondary / Outline (`.sq-btn.sq-btn-outline`):** Background `rgba(36, 36, 36, 0.35)`, border `1px solid var(--grey-20)`, teks `--white`.
+- **Card Action (`.sq-btn.sq-btn-card`):** Lebar `100%`, background `--grey-15`, border `--grey-20`, berubah menjadi border & teks `--green-50` saat di-hover.
 
-### Responsive
+### 2. Kartu Laporan Dashboard (`.sq-report-card`)
+Urutan informasi di dalam `.sq-report-card`:
+1. **Header Kartu (`.sq-report-card-header`):** Label tipe (`BARANG HILANG` / `BARANG DITEMUKAN`) di kiri dan `.sq-status-badge` (`lost` / `found`) di kanan.
+2. **Baris Ikon & Tanggal (`.sq-report-top-row`):** `.sq-icon-badge.sm` dengan ikon SVG di kiri dan tanggal laporan (`.sq-report-date`) di kanan.
+3. **Judul Barang (`h3`):** Nama barang dengan ukuran `26px` warna putih.
+4. **Metadata Lokasi & Kategori (`.sq-work-pill`):** Pill berlatar `--grey-15` menampilkan `{category} · {location}`.
+5. **Deskripsi Singkat (`.sq-report-desc`):** Teks ringkas warna `--grey-60`.
+6. **Footer Kartu (`.sq-report-footer`):** Teks status berwarna `--green-80` dan tombol ikon panah `.sq-icon-action.sm` (`/figma/icon-arrow-up-right.svg`).
 
-- Di bawah 900px, content grid berubah menjadi satu kolom.
-- Di bawah 680px, sidebar menjadi drawer fixed.
-- Mobile memiliki padding halaman sekitar 18px.
-- CTA utama di mobile boleh full-width.
-- Jangan menyembunyikan informasi status penting hanya karena layar kecil.
+### 3. Kartu Input & Form (`.sq-form-box` & `.sq-input-card`)
+- Form dibungkus oleh `.sq-form-box` berlatar gelap semi-transparan (`rgba(26, 26, 26, 0.6)`) dengan border `1px solid var(--grey-15)` dan radius `12px`.
+- Setiap field berada di dalam kartu `.sq-input-card` (`background: rgba(36, 36, 36, 0.5)`, `border: 1px solid var(--grey-15)`, `border-radius: 10px`).
+- Label tampil jelas di atas input menggunakan `.sq-input-label` (`20px`, `--white`), diikuti `.sq-input-underline` dengan garis bawah yang berubah menjadi `--green-50` ketika fokus (`:focus-within`).
+- Pesan error validasi atau server menggunakan `.sq-form-error` (`role="alert"`, border & latar merah transparan, teks `#ff9b9b`).
 
-## 5. Komponen standar
+### 4. Pencarian, Filter, dan State Kosong/Error
+- Toolbar pencarian berada di `.sq-dash-toolbar` menggunakan `.sq-search-field input` dan dropdown `.sq-select-field`.
+- State loading, kosong (*empty state*), dan error ditampilkan menggunakan `.sq-state` (dan `.sq-state.error` beserta tombol retry `.sq-btn-lime`).
 
-### Button
+---
 
-Gunakan label berbasis tindakan: `Buat laporan`, `Ajukan klaim`, `Simpan perubahan`, `Hubungi pelapor`.
+## 6. Aset Visual (`public/figma/`)
 
-- Primary: background navy, teks putih.
-- Secondary: background biru sangat muda atau outline tipis.
-- Tertiary: teks biru tanpa background.
-- Destructive: hanya untuk pembatalan/penghapusan dan harus diberi konfirmasi.
-- Tinggi kontrol minimum: 38px desktop; 42px untuk kontrol utama mobile.
+Seluruh aset grafis tema gelap disimpan di direktori `public/figma/`:
+- **Identitas:** `logo-cube.svg`
+- **Tekstur Banner:** `banner-wave-1.png`, `banner-wave-2.png`, `banner-wave-3.png`, `cta-wave.png`, `banner-dots.png`, `hero-dots.png`
+- **Ikon Layanan & Laporan:** `icon-service-1.svg` (Lost/Hilang), `icon-service-2.svg` (Found/Ditemukan), `icon-service-3.svg` (Total/Verifikasi)
+- **Ikon Keunggulan:** `icon-why-1.svg`, `icon-why-2.svg`, `icon-why-3.svg`, `icon-why-4.svg`
+- **Ikon UI & Navigasi:** `icon-arrow-up-right.svg`, `icon-check.svg`, `icon-faq-plus.svg`, `icon-faq-close.svg`
+- **Ikon Kontak & Sosial:** `icon-mail.svg`, `icon-phone.svg`, `icon-location.svg`, `icon-social-1.svg`, `icon-social-2.svg`, `icon-social-3.svg`
 
-### Search dan filter
+---
 
-Search field harus memakai ikon search, placeholder yang menjelaskan target pencarian, dan label aksesibel. Filter Lost/Found, kategori, lokasi, tanggal, dan status memakai kontrol native atau komponen yang perilakunya setara.
+## 7. Interaksi, Motion & Aksesibilitas
 
-### Card laporan
+- **Hover:** Tombol utama dan tombol ikon naik `translateY(-2px)` dengan transisi `0.2s`. Kartu laporan berubah latar menjadi `rgba(38, 38, 38, 0.28)` saat di-hover.
+- **Keyboard Focus:** Semua elemen interaktif (`button`, `a`, `input`, `select`, `textarea`) memiliki `outline: 2px solid var(--green-50)` dengan `outline-offset: 3px` saat `:focus-visible`.
+- **Reduced Motion:** Media query `@media (prefers-reduced-motion: reduce)` wajib menonaktifkan `transition` dan `scroll-behavior: smooth`.
+- **Aksesibilitas:**
+  - Status laporan selalu menyertakan teks, bukan hanya warna.
+  - Semua kontrol form memiliki label tampak (`.sq-input-label`) atau `aria-label`.
+  - Elemen dekoratif murni (gelombang banner, dot matrix, garis terrain) diberi `aria-hidden="true"`.
 
-Urutan informasi:
+---
 
-1. Visual/foto atau placeholder.
-2. Jenis laporan dan judul barang.
-3. Kategori, lokasi, dan waktu.
-4. Status.
-5. Aksi membuka detail.
+## 8. Checklist Kepatuhan Visual (Definition of Done)
 
-Jangan menampilkan kontak privat pada card publik.
-
-### Empty state
-
-Empty state harus menjelaskan kondisi dan tindakan berikutnya, misalnya: “Belum ada laporan yang cocok. Coba ubah kata kunci atau buat laporan baru.” Hindari area kosong tanpa arahan.
-
-### Activity/timeline
-
-Gunakan garis vertikal tipis dan ikon kecil untuk menunjukkan urutan aktivitas. Setiap item minimal memiliki judul aktivitas, objek yang terdampak, dan waktu.
-
-### Form
-
-- Label selalu terlihat; jangan hanya mengandalkan placeholder.
-- Field wajib diberi penanda dan pesan validasi yang spesifik.
-- Upload foto menjelaskan format dan batas ukuran.
-- Bukti klaim diberi penjelasan privasi sebelum pengguna mengunggah.
-
-## 6. Ikon dan ilustrasi
-
-Gunakan ikon outline dengan ukuran umum 16–20px dan stroke sekitar 1.8–2px. Ikon harus membantu pemahaman, bukan menggantikan label penting.
-
-Placeholder visual laporan memakai bidang warna lembut yang berbeda, bukan gambar acak. Ilustrasi hero boleh memakai orbit/geometri sederhana yang sudah dipakai di beranda; jangan menambahkan dekorasi besar pada setiap halaman.
-
-## 7. Interaksi dan motion
-
-- Hover card: naik maksimal 2px dengan shadow lembut.
-- Hover button: perubahan warna ringan, bukan animasi besar.
-- Drawer mobile: transisi singkat sekitar 200ms.
-- Fokus keyboard: outline minimal 3px dengan warna biru transparan.
-- Hormati `prefers-reduced-motion: reduce` dan matikan transisi dekoratif.
-- Jangan menggunakan auto-advancing carousel atau animasi yang mengalihkan perhatian dari laporan.
-
-## 8. Aksesibilitas
-
-- Kontras teks dan background harus terbaca; jangan menyampaikan status hanya lewat warna.
-- Semua tombol ikon memiliki `aria-label`.
-- Semua input memiliki label atau accessible name.
-- Urutan tab mengikuti urutan visual dan alur tugas.
-- Modal, drawer, dan menu harus dapat ditutup dengan keyboard.
-- Ukuran target interaktif mobile minimal sekitar 42px.
-- Heading harus berurutan dan menjelaskan struktur halaman.
-
-## 9. Aturan implementasi untuk anggota kelompok
-
-- Reuse `src/components/layout` dan `src/components/icons` dari project awal.
-- Tambahkan halaman baru di `src/pages`.
-- Tambahkan komponen domain di folder terpisah, misalnya `src/components/report-item`.
-- Jangan menaruh data API langsung di komponen presentasi; gunakan adapter atau data module.
-- Jangan mengubah token global tanpa mencatat alasannya di pull request.
-- Jangan membuat warna, radius, atau font baru jika token yang ada sudah cukup.
-- Pastikan `npm run build` berhasil sebelum pull request.
-- Gunakan branch pendek seperti `feature/report-item` atau `fix/mobile-sidebar`.
-
-## 10. Definition of done visual
-
-Sebuah halaman dianggap sesuai design system jika:
-
-- Memakai shell dan navigasi yang sama.
-- Menggunakan token warna, tipografi, spacing, dan radius yang tersedia.
-- Menampilkan loading, empty, error, dan success state yang jelas.
-- Responsif pada desktop dan mobile.
-- Memiliki keyboard focus dan label aksesibel.
-- Tidak membocorkan data kontak atau bukti kepemilikan.
-- Lulus build dan dapat direview tanpa perubahan visual besar yang tidak terdokumentasi.
+Sebuah halaman atau komponen baru dianggap sesuai dengan Design System v2.0 jika:
+- [ ] Menggunakan struktur `.sq-page`, `.sq-navbar`, `.sq-container`, dan `.sq-footer`.
+- [ ] Memakai variabel warna CSS (`--bg-dark`, `--grey-15`, `--green-50`, dll.) serta font `Barlow` & `Inter`.
+- [ ] Menyediakan state loading, empty, dan error (`.sq-state`) yang jelas.
+- [ ] Responsif penuh pada breakpoint `1100px`, `800px`, dan `480px`.
+- [ ] Tidak menampilkan nomor telepon pribadi, password, atau bukti kepemilikan rahasia di area publik.
+- [ ] Lulus `npm run build` tanpa error kompilasi.

@@ -19,5 +19,41 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/logout', (req, res) => { sessions.delete(req.cookies.lf_session); res.clearCookie('lf_session').status(204).end() })
 app.get('/api/auth/me', authenticate, (req, res) => res.json({ user: getUser(req.userId) }))
 app.get('/api/reports', authenticate, (_req, res) => res.json({ reports: db.prepare('SELECT id, type, title, category, location, description, status, reported_at FROM reports ORDER BY reported_at DESC').all() }))
+app.post('/api/reports', authenticate, (req, res) => {
+  const body = req.body ?? {}
+  const text = (value) => (typeof value === 'string' ? value.trim() : '')
+  const type = text(body.type)
+  const title = text(body.title)
+  const category = text(body.category)
+  const location = text(body.location)
+  const description = text(body.description)
+  const imageUrl = text(body.image_url) || null
+
+  if (type !== 'Lost' && type !== 'Found') return res.status(400).json({ error: 'Tipe laporan harus "Lost" atau "Found".' })
+  if (!title) return res.status(400).json({ error: 'Nama barang wajib diisi.' })
+  if (title.length > 120) return res.status(400).json({ error: 'Nama barang maksimal 120 karakter.' })
+  if (!category) return res.status(400).json({ error: 'Kategori wajib dipilih.' })
+  if (!location) return res.status(400).json({ error: 'Lokasi di kampus wajib diisi.' })
+  if (!description) return res.status(400).json({ error: 'Deskripsi barang wajib diisi.' })
+  if (description.length > 1000) return res.status(400).json({ error: 'Deskripsi maksimal 1000 karakter.' })
+  if (imageUrl && !/^https?:\/\/\S+$/i.test(imageUrl)) return res.status(400).json({ error: 'URL foto harus diawali http:// atau https://.' })
+
+  let reportedAt = new Date().toISOString().slice(0, 19)
+  if (text(body.reported_at)) {
+    const parsed = new Date(text(body.reported_at))
+    if (Number.isNaN(parsed.getTime())) return res.status(400).json({ error: 'Tanggal kejadian tidak valid.' })
+    if (parsed.getTime() > Date.now() + 86400000) return res.status(400).json({ error: 'Tanggal kejadian tidak boleh di masa depan.' })
+    reportedAt = text(body.reported_at)
+  }
+
+  const status = type === 'Lost' ? 'Masih dicari' : 'Menunggu pemilik'
+  const result = db
+    .prepare('INSERT INTO reports (owner_id, type, title, category, location, description, status, reported_at, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(req.userId, type, title, category, location, description, status, reportedAt, imageUrl)
+
+  res.status(201).json({
+    report: { id: Number(result.lastInsertRowid), type, title, category, location, description, status, reported_at: reportedAt, image_url: imageUrl },
+  })
+})
 app.use((error, _req, res, _next) => { console.error(error); res.status(500).json({ error: 'Terjadi gangguan pada server. Silakan coba lagi.' }) })
 app.listen(3001, () => console.log('Lost & Found API at http://localhost:3001'))

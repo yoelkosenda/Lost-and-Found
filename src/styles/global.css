@@ -1082,6 +1082,149 @@ select:focus-visible {
   color: var(--green-70);
 }
 
+/* CREATE REPORT FORM (memakai token SquareUp yang sama) */
+.sq-fieldset {
+  margin: 0;
+  min-width: 0;
+}
+
+.sq-fieldset legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+
+.sq-fieldset legend + * {
+  clear: both;
+}
+
+.sq-required {
+  color: var(--green-50);
+}
+
+.sq-optional {
+  color: var(--grey-60);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.sq-input-underline select,
+.sq-input-underline textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--white);
+  font: inherit;
+  font-size: 17px;
+  outline: none;
+}
+
+.sq-input-underline select option {
+  background: var(--grey-15);
+  color: var(--white);
+}
+
+.sq-input-underline textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.6;
+}
+
+.sq-input-underline textarea::placeholder {
+  color: var(--grey-40);
+}
+
+.sq-input-underline input[type='date'] {
+  color-scheme: dark;
+}
+
+.sq-input-underline:has([aria-invalid='true']) {
+  border-bottom-color: #ff9b9b;
+}
+
+.sq-field-error {
+  color: #ff9b9b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sq-field-hint {
+  color: var(--grey-60);
+  font-size: 14px;
+}
+
+.sq-field-hint b {
+  color: var(--green-70);
+}
+
+.sq-type-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.sq-type-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 22px;
+  border-radius: 10px;
+  border: 1px solid var(--grey-20);
+  background: var(--grey-15);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.sq-type-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sq-type-option b {
+  color: var(--white);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.sq-type-option small {
+  color: var(--grey-60);
+  font-size: 14px;
+}
+
+.sq-type-option:hover {
+  border-color: var(--grey-40);
+}
+
+.sq-type-option.active {
+  border-color: var(--green-50);
+  background: rgba(158, 255, 0, 0.08);
+}
+
+.sq-type-option.active b::before {
+  content: '✓ ';
+  color: var(--green-50);
+}
+
+.sq-type-option:has(input:focus-visible) {
+  outline: 3px solid rgba(158, 255, 0, 0.45);
+  outline-offset: 2px;
+}
+
+.sq-form-footer .sq-hero-actions {
+  justify-content: center;
+}
+
+@media (max-width: 800px) {
+  .sq-type-toggle {
+    grid-template-columns: 1fr;
+  }
+  .sq-input-card {
+    padding: 20px;
+  }
+}
+
 /* DASHBOARD STYLES */
 .sq-account-bar {
   display: flex;

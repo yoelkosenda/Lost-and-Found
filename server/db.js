@@ -1,14 +1,36 @@
-import Database from 'better-sqlite3'
-import bcrypt from 'bcryptjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
+import bcrypt from 'bcryptjs'
 
+const require = createRequire(import.meta.url)
 const root = path.dirname(fileURLToPath(import.meta.url))
 const dataDir = path.join(root, 'data')
 fs.mkdirSync(dataDir, { recursive: true })
-const db = new Database(path.join(dataDir, 'lost-and-found.db'))
-db.pragma('foreign_keys = ON')
+const dbPath = path.join(dataDir, 'lost-and-found.db')
+
+function getDatabase() {
+  try {
+    const Database = require('better-sqlite3')
+    const instance = new Database(dbPath)
+    if (typeof instance.pragma === 'function') {
+      instance.pragma('foreign_keys = ON')
+    }
+    return instance
+  } catch (err) {
+    console.warn(`[db] better-sqlite3 tidak dapat dimuat (${err.code || err.message}). Menggunakan driver native Node.js (node:sqlite)...`)
+    const { DatabaseSync } = require('node:sqlite')
+    const instance = new DatabaseSync(dbPath)
+    instance.exec('PRAGMA foreign_keys = ON')
+    if (!instance.pragma) {
+      instance.pragma = (str) => instance.exec(`PRAGMA ${str}`)
+    }
+    return instance
+  }
+}
+
+const db = getDatabase()
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'student', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);

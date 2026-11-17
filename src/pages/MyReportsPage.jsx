@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
+import StatusHistory from '../components/reports/StatusHistory.jsx'
 
 export default function MyReportsPage({ user, onLogout }) {
   const [reports, setReports] = useState([])
@@ -11,6 +12,11 @@ export default function MyReportsPage({ user, onLogout }) {
   const [type, setType] = useState('Semua')
   const [updatingId, setUpdatingId] = useState(null)
   const [feedback, setFeedback] = useState(null)
+  const [openHistory, setOpenHistory] = useState({})
+
+  const toggleHistory = (reportId) => {
+    setOpenHistory((prev) => ({ ...prev, [reportId]: !prev[reportId] }))
+  }
 
   const loadReports = () => {
     setLoading(true)
@@ -473,7 +479,28 @@ export default function MyReportsPage({ user, onLogout }) {
                         >
                           {isBusy ? 'Memproses…' : isClosed ? '✓ Dibatalkan / Ditutup' : 'Dibatalkan / Ditutup'}
                         </button>
+
+                        <button
+                          type="button"
+                          className="sq-btn sq-btn-outline sq-history-toggle"
+                          aria-expanded={Boolean(openHistory[r.id])}
+                          onClick={() => toggleHistory(r.id)}
+                        >
+                          {openHistory[r.id] ? 'Tutup Riwayat ▲' : 'Riwayat Status ▼'}
+                        </button>
                       </div>
+
+                      {openHistory[r.id] && (
+                        <div className="sq-myreport-history">
+                          <h4 className="sq-myreport-history-title">Riwayat Status (Timeline)</h4>
+                          <StatusHistory
+                            reportId={r.id}
+                            currentStatus={r.status}
+                            reportedAt={r.reported_at}
+                            compact
+                          />
+                        </div>
+                      )}
                     </div>
                   </article>
                 )

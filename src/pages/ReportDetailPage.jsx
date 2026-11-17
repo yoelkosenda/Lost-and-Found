@@ -3,6 +3,7 @@ import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
 import ClaimAction from '../components/claims/ClaimAction.jsx'
 import GoogleMapPin from '../components/maps/GoogleMapPin.jsx'
+import StatusHistory from '../components/reports/StatusHistory.jsx'
 import { getCoordinatesForReport } from '../lib/campusLocations.js'
 
 export default function ReportDetailPage({ id, user, onLogout }) {
@@ -110,6 +111,15 @@ export default function ReportDetailPage({ id, user, onLogout }) {
                     />
                   )
                 })()}
+              </section>
+
+              <section className="sq-detail-description">
+                <h2>Riwayat Status (Timeline)</h2>
+                <StatusHistory
+                  reportId={report.id}
+                  currentStatus={report.status}
+                  reportedAt={report.reported_at}
+                />
               </section>
             </section>
 

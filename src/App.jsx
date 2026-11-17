@@ -8,6 +8,9 @@ import CreateReportPage from './pages/CreateReportPage.jsx'
 import MyClaimsPage from './pages/MyClaimsPage.jsx'
 import MyReportsPage from './pages/MyReportsPage.jsx'
 import ReportDetailPage from './pages/ReportDetailPage.jsx'
+import ProfilePage from './pages/ProfilePage.jsx'
+import NotificationsPage from './pages/NotificationsPage.jsx'
+import MatchingPage from './pages/MatchingPage.jsx'
 import ClaimDetailPage from './pages/ClaimDetailPage.jsx'
 
 export default function App() {
@@ -26,6 +29,9 @@ export default function App() {
   if (path === '/app/reports/new') return user ? <CreateReportPage user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/app/my-reports') return user ? <MyReportsPage user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/app/my-claims') return user ? <MyClaimsPage user={user} onLogout={logout} /> : <Redirect to="/login" />
+  if (path === '/app/profile') return user ? <ProfilePage user={user} onLogout={logout} onUserChange={setUser} /> : <Redirect to="/login" />
+  if (path === '/app/notifications') return user ? <NotificationsPage user={user} onLogout={logout} /> : <Redirect to="/login" />
+  if (path === '/app/matching') return user ? <MatchingPage user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/login') return user ? <Redirect to="/app" /> : <LoginPage onLogin={login} />
   return <LandingPage />
 }

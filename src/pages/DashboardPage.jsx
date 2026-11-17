@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
 import ClaimAction from '../components/claims/ClaimAction.jsx'
+import AppNavbar from '../components/layout/AppNavbar.jsx'
 import GoogleMapPin from '../components/maps/GoogleMapPin.jsx'
 import { CAMPUS_CENTER, CAMPUS_LOCATION_NAMES, getCoordinatesForReport } from '../lib/campusLocations.js'
 
@@ -118,47 +119,10 @@ export default function DashboardPage({ user, onLogout }) {
   const found = data?.reports.filter((r) => r.type === 'Found').length ?? 0
   const lost = data?.reports.filter((r) => r.type === 'Lost').length ?? 0
   const total = data?.reports.length ?? '—'
-  const initials = user.name
-    .split(' ')
-    .map((x) => x[0])
-    .join('')
 
   return (
     <div className="sq-page">
-      <header className="sq-navbar">
-        <div className="sq-navbar-inner">
-          <Link to="/" className="sq-brand" aria-label="Beranda Lost and Found UNKLAB">
-            <span className="sq-brand-box">
-              <img src="/figma/logo-cube.svg" alt="" width="38" height="43" />
-            </span>
-            <span className="sq-brand-text">
-              Lost and Found<span>.</span>
-              <small>UNKLAB</small>
-            </span>
-          </Link>
-
-          <nav className="sq-nav-links" aria-label="Navigasi Dashboard">
-            <a href="#ringkasan" className="sq-nav-item active">Ringkasan</a>
-            <a href="#laporan" className="sq-nav-item">Laporan</a>
-            <Link to="/app/my-reports" className="sq-nav-item">Laporan Saya</Link>
-            <a href="#aktivitas" className="sq-nav-item">Aktivitas</a>
-            <Link to="/app/my-claims" className="sq-nav-item">Klaim Saya</Link>
-          </nav>
-
-          <div className="sq-account-bar">
-            <div className="sq-user-chip">
-              <span className="sq-avatar">{initials}</span>
-              <div className="sq-user-meta">
-                <b>{user.name}</b>
-                <small>Mahasiswa</small>
-              </div>
-            </div>
-            <button type="button" className="sq-btn sq-btn-outline sq-logout-btn" onClick={onLogout}>
-              Keluar ↗
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppNavbar user={user} onLogout={onLogout} active="dashboard" />
 
       <main className="sq-container">
         {/* DASHBOARD HERO BANNER */}
@@ -185,9 +149,8 @@ export default function DashboardPage({ user, onLogout }) {
                 <a href="#laporan" className="sq-btn sq-btn-outline">
                   Jelajahi Laporan ↓
                 </a>
-                {/* .sq-nav-links disembunyikan di layar <= 800px, jadi tautan ini menjaga akses di mobile. */}
-                <Link to="/app/my-claims" className="sq-btn sq-btn-outline">
-                  Klaim Saya ↗
+                <Link to="/app/matching" className="sq-btn sq-btn-outline">
+                  Smart Matching ↗
                 </Link>
               </div>
             </div>

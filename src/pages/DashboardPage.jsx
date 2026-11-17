@@ -106,9 +106,9 @@ export default function DashboardPage({ user, onLogout }) {
                 Temukan laporan terbaru dari sekitar kampus Universitas Klabat dan bantu satu barang berharga kembali ke tangan pemiliknya.
               </p>
               <div className="sq-hero-actions">
-                <button type="button" className="sq-btn sq-btn-lime">
+                <Link to="/app/reports/new" className="sq-btn sq-btn-lime">
                   + Buat laporan
-                </button>
+                </Link>
                 <a href="#laporan" className="sq-btn sq-btn-outline">
                   Jelajahi Laporan ↓
                 </a>

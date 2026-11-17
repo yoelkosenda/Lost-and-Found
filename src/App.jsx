@@ -4,6 +4,7 @@ import { navigate } from './router.jsx'
 import LandingPage from './pages/LandingPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
+import CreateReportPage from './pages/CreateReportPage.jsx'
 import MyClaimsPage from './pages/MyClaimsPage.jsx'
 import ReportDetailPage from './pages/ReportDetailPage.jsx'
 
@@ -18,6 +19,7 @@ export default function App() {
   const reportDetailMatch = path.match(/^\/app\/reports\/(\d+)$/)
   if (reportDetailMatch) return user ? <ReportDetailPage id={reportDetailMatch[1]} user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/app') return user ? <DashboardPage user={user} onLogout={logout} /> : <Redirect to="/login" />
+  if (path === '/app/reports/new') return user ? <CreateReportPage user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/app/my-claims') return user ? <MyClaimsPage user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/login') return user ? <Redirect to="/app" /> : <LoginPage onLogin={login} />
   return <LandingPage />

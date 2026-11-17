@@ -39,21 +39,25 @@ Dokumen ini adalah **sumber aturan mutlak** untuk semua AI Coding Agent (Antigra
 
 ---
 
-## 3. Sistem Desain & Visual (Talentflow Inspiration)
+## 3. Sistem Desain & Visual (SquareUp Figma Dark Theme)
 
-Desain mengikuti estetika editorial SaaS (terinspirasi dari template Talentflow Webflow):
-- **Warna Utama:**
-  - Background halaman: Krem hangat (`#f7f5ef`)
-  - Teks & elemen struktural: Hijau hutan tua / ink (`#193529`)
-  - Aksi utama / CTA primer: Hijau cerah (`#c9ee5b`) dengan teks `#193529`
-  - Aksen status & kartu: Sage, peach (`#fff0e7`), mint (`#e5f2ed`), lavender (`#eee9fb`), soft yellow (`#fff6da`)
+Desain mengadaptasi estetika gelap **SquareUp Figma Dark Theme** (lihat detail lengkap di `docs/design-system.md`):
+- **Warna Utama (`src/styles/global.css`):**
+  - Background halaman: Karbon gelap `--bg-dark` (`#1a1a1a`) dan permukaan kartu `--bg-card` (`#1f1f1f`)
+  - Garis batas struktural & kontrol: `--grey-15` (`#262626`), `--grey-20` (`#333333`), `--grey-30` (`#4c4c4d`)
+  - Teks: Putih `--white` (`#ffffff`), abu terang `--grey-90` (`#e6e6e6`), dan metadata `--grey-60` (`#98989a`)
+  - Aksi utama / CTA primer (`.sq-btn-lime`): Hijau limau elektrik `--green-50` (`#9eff00`), hover `--green-60` (`#b1ff33`), dengan teks gelap `#262626`
+  - Aksen status (`.sq-status-badge`): Hijau neon `#9eff00` untuk `Found`, kuning hangat `#ffc470` untuk `Lost`
 - **Tipografi:**
-  - Judul / Display Heading: `DM Serif Display`
-  - Body text, label, tombol, kontrol: `DM Sans`
+  - Judul, navigasi, tombol, statistik, dan kontrol: `Barlow` (`400`, `500`, `600`, `700`)
+  - Deskripsi kartu dan kode laporan: `Inter` (`400`, `500`, `600`)
+- **Arsitektur Kelas CSS & Aset:**
+  - Gunakan prefix `.sq-*` (`.sq-page`, `.sq-navbar`, `.sq-container`, `.sq-section`, `.sq-section-banner`, `.sq-cta-banner`, `.sq-report-card`, `.sq-form-box`, `.sq-input-card`, `.sq-btn`).
+  - Gunakan aset SVG dan tekstur gelombang yang tersedia di `public/figma/`.
 - **Aturan UX:**
   - Status laporan **WAJIB selalu memiliki label teks** (misal: "Masih dicari", "Menunggu pemilik", "Sudah ditemukan"), **tidak boleh hanya warna**.
   - Semua tombol interaktif wajib memiliki teks atau `aria-label` yang jelas.
-  - Desain harus responsif (ramah tampilan mobile layar < 800px).
+  - Desain harus responsif penuh pada breakpoint `1100px`, `800px`, dan `480px`.
   - Hormati preferensi `prefers-reduced-motion`.
 
 ---
@@ -65,6 +69,7 @@ Desain mengikuti estetika editorial SaaS (terinspirasi dari template Talentflow 
    - `src/components/`: Komponen UI modular yang dapat digunakan ulang.
    - `src/lib/api.js`: Adapter panggilan API.
    - `server/`: Express API dan database helper.
+   - `public/figma/`: Aset ikon SVG, logo kubus, dan tekstur banner tema gelap.
 2. **Sebelum Membuat Pull Request / Selesai Bekerja:**
    - Jalankan `npm run build` dan pastikan build frontend berhasil 100% tanpa error kompilasi.
    - Pastikan file `server/data/lost-and-found.db`, file `.env`, atau `node_modules` tidak ter-commit ke git.

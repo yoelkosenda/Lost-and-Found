@@ -1,15 +1,15 @@
-# Task 5: Landing Page Dinamis, Activity Feed, & Refactor CSS
+# Task 5: Landing Page Dinamis, Activity Feed, & Standarisasi CSS
 
 **Nama Branch:** `feature/landing-and-activity`  
 **Target File:** `src/pages/LandingPage.jsx`, `src/pages/DashboardPage.jsx`, `src/styles/global.css`, `server/index.js`  
-**Prasyarat Dokumen:** Baca `AGENTS.md` sebelum memulai.
+**Prasyarat Dokumen:** Baca `AGENTS.md` dan `docs/design-system.md` sebelum memulai.
 
 ---
 
 ## 1. Tujuan Fitur
-1. Menghubungkan Landing Page publik (`/`) ke data laporan nyata dari database (bukan lagi data statis).
-2. Membangun panel **Aktivitas Komunitas (Activity Feed)** nyata pada dashboard mahasiswa `/app` (menggantikan teks statis saat ini).
-3. Melakukan pemformatan dan restrukturisasi file [src/styles/global.css](file:///C:/Technologiaa/FrontEnd%20Final%20Project/Lost-and-Found/src/styles/global.css) agar rapi, berindentasi, dan mudah dirawat oleh seluruh anggota tim.
+1. Menghubungkan bagian **Laporan Terbaru Komunitas** pada Landing Page publik (`/`) ke data laporan nyata dari database SQLite (dengan fallback ke data preview jika API belum mengembalikan data).
+2. Membangun panel **Aktivitas Komunitas (Activity Feed)** nyata pada dashboard mahasiswa `/app` di bagian `#aktivitas` dengan gaya grid berbingkai SquareUp Dark Theme.
+3. Menjaga struktur `src/styles/global.css` tetap rapi, modular, dan terdokumentasi sesuai token SquareUp Figma Dark Theme.
 
 ---
 
@@ -21,9 +21,9 @@ Buka `server/index.js` dan tambahkan endpoint publik untuk preview landing page:
 - **URL:** `/api/reports/public`
 - **Otorisasi:** **Publik (TIDAK memerlukan middleware `authenticate`)**.
 - **Logika Database:**
-  - Ambil 3-4 laporan terbaru yang aktif:
+  - Ambil 4 laporan terbaru yang aktif (sesuai grid 2x2 `.sq-works-grid` di `LandingPage.jsx`):
     ```sql
-    SELECT id, type, title, category, location, status, reported_at 
+    SELECT id, type, title, category, location, description, status, reported_at 
     FROM reports 
     ORDER BY reported_at DESC 
     LIMIT 4
@@ -37,10 +37,10 @@ Buka `server/index.js` dan buat endpoint dengan middleware `authenticate`:
 - **Logika Database:**
   - Gabungkan log aktivitas terbaru dari laporan dan klaim:
     ```sql
-    SELECT 'report' AS activity_type, id, title, type AS item_type, status, reported_at AS created_at
+    SELECT 'report' AS activity_type, id, title, type AS item_type, location, status, reported_at AS created_at
     FROM reports
     UNION ALL
-    SELECT 'claim' AS activity_type, c.id, r.title, 'Claim' AS item_type, c.status, c.submitted_at AS created_at
+    SELECT 'claim' AS activity_type, c.id, r.title, 'Claim' AS item_type, r.location, c.status, c.submitted_at AS created_at
     FROM claims c
     JOIN reports r ON c.report_id = r.id
     ORDER BY created_at DESC
@@ -60,53 +60,32 @@ export const api = {
 
 ---
 
-## 3. Pekerjaan Frontend
+## 3. Pekerjaan Frontend (Tema Gelap SquareUp Figma)
 
 ### A. Landing Page Dinamis (`src/pages/LandingPage.jsx`)
-- Pada saat komponen dimuat (`useEffect`), panggil `api.publicReports()`.
-- Gantikan daftar laporan hardcoded pada bagian preview laporan dengan data dinamis dari API.
-- Tampilkan fallback state yang halus jika data masih dimuat atau belum ada laporan.
+- Pada saat komponen `LandingPage` dimuat (`useEffect`), panggil `api.publicReports()`.
+- Render data laporan dari API ke dalam `<div className="sq-works-grid">` menggunakan struktur `.sq-work-card`:
+  - `.sq-work-header`: Menampilkan tipe & lokasi serta `<em className={`sq-status-badge ${item.type.toLowerCase()}`}>{item.status}</em>`.
+  - `.sq-work-visual`: Menampilkan `.sq-visual-tag` (`BARANG DITEMUKAN` / `BARANG HILANG`), kode `#LF-${item.id}`, `.sq-visual-orb` dengan ikon `/figma/icon-service-2.svg` (Found) atau `/figma/icon-service-1.svg` (Lost), judul, dan status.
+  - `.sq-work-meta` & `.sq-work-desc`: Menampilkan judul, `.sq-work-pill` (`{category} · {location}`), tombol panah `.sq-icon-action` ke `/login`, dan deskripsi laporan.
+- Pertahankan `previewReports` sebagai fallback awal saat data sedang dimuat atau jika terjadi gangguan jaringan agar tampilan beranda tidak pernah kosong.
 
 ### B. Activity Feed Nyata di Dashboard (`src/pages/DashboardPage.jsx`)
-- Panggil `api.activities()` di `DashboardPage`.
-- Ubah bagian `<section id="aktivitas" className="activity">`:
-  - Buat komponen linimasa / timeline vertikal dengan garis tipis dan ikon aktivitas.
-  - Tampilkan informasi ringkas:
-    - *Contoh Laporan:* "Yoel melaporkan barang hilang: **Dompet kulit cokelat** di Student Center."
-    - *Contoh Klaim:* "Ada pengajuan klaim baru untuk: **AirPods putih**."
-    - Cantumkan penanda waktu relatif (misal: "2 jam yang lalu" atau "13 Nov").
+- Panggil `api.activities()` di `DashboardPage.jsx`.
+- Pada bagian `<section id="aktivitas">`, tampilkan daftar aktivitas terbaru di dalam grid berbingkai gelap (misalnya menggunakan `.sq-section` + `.sq-why-grid` / `.sq-activity-grid` di atas atau bersama `.sq-cta-banner`):
+  - Setiap item aktivitas menampilkan `.sq-icon-badge.sm` (ikon laporan atau klaim), judul aktivitas, lokasi/status (`.sq-status-badge`), dan penanda waktu (`created_at`).
+  - *Contoh Laporan:* `"Laporan Barang Hilang baru: Dompet kulit cokelat di Student Center"`
+  - *Contoh Klaim:* `"Pengajuan klaim baru untuk: AirPods putih"`
 
-### C. Pemformatan & Restrukturisasi `src/styles/global.css`
-- **Kondisi saat ini:** File `src/styles/global.css` tersimpan dalam satu baris yang sangat panjang/minified.
-- **Tugas:**
-  - Format ulang CSS tersebut dengan baris baru (*line breaks*) dan indentasi 2 spasi yang rapi.
-  - Berikan komentar pemisah bagian, misalnya:
-    ```css
-    /* ==========================================================================
-       1. DESIGN TOKENS & ROOT VARIABLES
-       ========================================================================== */
-    /* ==========================================================================
-       2. RESET & BASE ELEMENTS
-       ========================================================================== */
-    /* ==========================================================================
-       3. NAVIGATION & APP SHELL
-       ========================================================================== */
-    /* ==========================================================================
-       4. DASHBOARD & REPORT CARDS
-       ========================================================================== */
-    /* ==========================================================================
-       5. FORMS, BUTTONS & UTILITIES
-       ========================================================================== */
-    /* ==========================================================================
-       6. RESPONSIVE BREAKPOINTS
-       ========================================================================== */
-    ```
-  - ⚠️ **PENTING:** Jangan mengubah nilai token, ukuran font, margin, atau warna yang ada agar tidak merusak tampilan visual yang sudah selesai.
+### C. Standarisasi Styling di `src/styles/global.css`
+- Pastikan seluruh styling komponen baru (timeline aktivitas, kartu klaim, dll.) menggunakan variabel CSS yang sudah ada di `:root`:
+  - `--bg-dark` (`#1a1a1a`), `--bg-card` (`#1f1f1f`), `--grey-15` (`#262626`), `--grey-20` (`#333333`), `--grey-60` (`#98989a`), `--grey-90` (`#e6e6e6`), `--white` (`#ffffff`), `--green-50` (`#9eff00`), `--green-70` (`#c5ff66`), dan `--icon-gradient`.
+- ⚠️ **PENTING:** Jangan mengubah nilai token warna utama, font (`Barlow` & `Inter`), atau merusak layout responsif pada breakpoint `1100px`, `800px`, dan `480px`.
 
 ---
 
 ## 4. Checklist Selesai (Definition of Done)
-- [ ] Landing page (`/`) menampilkan kartu laporan yang bersumber langsung dari database SQLite.
-- [ ] Section aktivitas di dashboard menampilkan event laporan/klaim terbaru secara dinamis.
-- [ ] File `src/styles/global.css` terformat rapi dengan indentasi dan komentar section yang jelas tanpa mengubah visual aplikasi.
+- [ ] Landing page (`/`) menampilkan kartu `.sq-work-card` yang bersumber langsung dari database SQLite melalui `GET /api/reports/public`.
+- [ ] Section `#aktivitas` di dashboard (`/app`) menampilkan event laporan/klaim terbaru secara dinamis dari `GET /api/activities`.
+- [ ] Seluruh elemen baru mengikuti **SquareUp Figma Dark Theme** di `src/styles/global.css` dan responsif di layar mobile.
 - [ ] Menjalankan `npm run build` sukses tanpa error kompilasi.

@@ -2,12 +2,12 @@
 
 **Nama Branch:** `feature/my-reports`  
 **Target Rute:** `/app/my-reports`  
-**Prasyarat Dokumen:** Baca `AGENTS.md` sebelum memulai.
+**Prasyarat Dokumen:** Baca `AGENTS.md` dan `docs/design-system.md` sebelum memulai.
 
 ---
 
 ## 1. Tujuan Fitur
-Memungkinkan mahasiswa melihat semua laporan yang pernah mereka buat sendiri, memantau perkembangannya, serta mengubah status laporan (misalnya: menandai barang telah ditemukan atau membatalkan laporan yang sudah selesai).
+Memungkinkan mahasiswa melihat semua laporan yang pernah mereka buat sendiri, memantau perkembangannya, serta mengubah status laporan (misalnya: menandai barang telah ditemukan/dikembalikan atau menutup laporan yang sudah selesai).
 
 ---
 
@@ -59,30 +59,30 @@ export const api = {
 
 ---
 
-## 3. Pekerjaan Frontend
+## 3. Pekerjaan Frontend (Tema Gelap SquareUp Figma)
 
 ### A. Buat Halaman: `src/pages/MyReportsPage.jsx`
-1. **Header & Navigasi:**
-   - Navigasi atas dengan link "Beranda" (ke `/app`) dan "Laporan Saya" (aktif).
-   - Tombol "← Kembali ke Dashboard".
-2. **Statistik Pribadi:**
-   - Ringkasan kecil: Total laporan Anda, Laporan aktif, dan Laporan selesai.
-3. **Filter Tab:**
-   - Tab cepat untuk menyaring: `Semua`, `Barang Hilang`, `Barang Ditemukan`.
-4. **Daftar Kartu Laporan:**
-   - Menampilkan detail barang, tanggal pelaporan, dan badge status saat ini.
-   - **Tombol Aksi Pemilik:**
-     - Tombol `"Tandai Selesai / Ditemukan"` (mengubah status menjadi `Sudah ditemukan` atau `Sudah dikembalikan`).
-     - Tombol `"Tutup Laporan"` (mengubah status menjadi `Dibatalkan / Ditutup`).
-     - Dialog konfirmasi sederhana sebelum status diubah.
-5. **Empty State:**
-   - Jika belum ada laporan: tampilkan teks penjelasan ramah dan tombol `"+ Buat Laporan Pertama"` yang mengarahkan ke `/app/reports/new`.
+1. **Header & Navigasi (`.sq-page` & `.sq-navbar`):**
+   - Gunakan `.sq-navbar` dengan `.sq-nav-links` yang memuat `<Link to="/app" className="sq-nav-item">Dashboard</Link>` dan `<Link to="/app/my-reports" className="sq-nav-item active">Laporan Saya</Link>`.
+2. **Banner & Statistik Pribadi (`.sq-dash-hero` & `.sq-dash-stats`):**
+   - Tampilkan banner header dengan `.sq-kicker-pill` (`KELOLA LAPORAN SAYA`) dan judul halaman.
+   - Tampilkan 3 kartu ringkasan `.sq-stat-card` di dalam `.sq-dash-stats`: Total Laporan Anda, Laporan Aktif, dan Laporan Selesai.
+3. **Filter Toolbar (`.sq-dash-toolbar`):**
+   - Sediakan filter tab atau `.sq-select-field` untuk menyaring: `Semua`, `Lost (Barang Hilang)`, dan `Found (Barang Ditemukan)`.
+4. **Daftar Kartu Laporan (`.sq-report-grid` & `.sq-report-card`):**
+   - Tampilkan detail barang, tanggal pelaporan (`.sq-report-date`), pill lokasi (`.sq-work-pill`), dan badge status teks (`.sq-status-badge`).
+   - **Tombol Aksi Pemilik** di bagian bawah kartu:
+     - Tombol `.sq-btn sq-btn-lime` `"Tandai Selesai / Ditemukan"` (mengubah status menjadi `Sudah ditemukan` atau `Sudah dikembalikan`).
+     - Tombol `.sq-btn sq-btn-outline` `"Tutup Laporan"` (mengubah status menjadi `Dibatalkan / Ditutup`).
+     - Berikan konfirmasi sebelum status diubah.
+5. **Empty State (`.sq-state`):**
+   - Jika belum ada laporan: tampilkan pesan ramah di dalam `.sq-state` beserta tombol `.sq-btn sq-btn-lime` `"+ Buat Laporan Pertama"` yang mengarahkan ke `/app/reports/new`.
 
 ### B. Hubungkan Navigasi di Dashboard
 Buka `src/pages/DashboardPage.jsx`:
-- Pada bagian `<nav>` di header atas, tambahkan link navigasi ke halaman ini:
+- Pada bagian `<nav className="sq-nav-links">` di `.sq-navbar`, tambahkan link navigasi ke halaman ini:
   ```jsx
-  <Link to="/app/my-reports">Laporan Saya</Link>
+  <Link to="/app/my-reports" className="sq-nav-item">Laporan Saya</Link>
   ```
 
 ### C. Daftarkan Rute di `src/App.jsx`
@@ -94,8 +94,8 @@ if (path === '/app/my-reports') return user ? <MyReportsPage user={user} onLogou
 ---
 
 ## 4. Checklist Selesai (Definition of Done)
-- [ ] Pengguna dapat mengakses halaman `/app/my-reports` dari navigasi dashboard.
-- [ ] Halaman hanya menampilkan laporan yang dibuat oleh pengguna yang sedang login.
-- [ ] Pengguna dapat memperbarui status laporan miliknya menjadi selesai atau dibatalkan.
+- [ ] Pengguna dapat mengakses halaman `/app/my-reports` dari `.sq-navbar` di dashboard.
+- [ ] Halaman hanya menampilkan laporan milik mahasiswa yang sedang login dengan gaya SquareUp Dark Theme.
+- [ ] Pengguna dapat memperbarui status laporan miliknya menjadi selesai atau ditutup.
 - [ ] Upaya mengubah laporan orang lain ditolak oleh backend (HTTP 403).
 - [ ] Menjalankan `npm run build` sukses tanpa error kompilasi.

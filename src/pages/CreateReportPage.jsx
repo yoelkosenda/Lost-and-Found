@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
+import GoogleMapPin from '../components/maps/GoogleMapPin.jsx'
+import { CAMPUS_CENTER, CAMPUS_LOCATION_NAMES, getCoordinatesForLocation } from '../lib/campusLocations.js'
 
 const CATEGORIES = ['Elektronik', 'Aksesori', 'Kunci', 'Dokumen/Buku', 'Perlengkapan', 'Pakaian', 'Lainnya']
-const LOCATIONS = ['GK1', 'GK2', 'Perpustakaan', 'Student Center', 'Cafeteria', 'Gymnasium', 'Parkiran Fakultas', 'Asrama']
+const LOCATIONS = CAMPUS_LOCATION_NAMES
 
 const pad = (n) => String(n).padStart(2, '0')
 const toLocalDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
@@ -29,7 +31,17 @@ function validate(form, today) {
 
 export default function CreateReportPage({ user, onLogout }) {
   const today = toLocalDate(new Date())
-  const [form, setForm] = useState({ type: 'Lost', title: '', category: '', location: '', date: today, description: '', image_url: '' })
+  const [form, setForm] = useState({
+    type: 'Lost',
+    title: '',
+    category: '',
+    location: '',
+    date: today,
+    description: '',
+    image_url: '',
+    latitude: CAMPUS_CENTER.lat,
+    longitude: CAMPUS_CENTER.lng,
+  })
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -38,7 +50,15 @@ export default function CreateReportPage({ user, onLogout }) {
   const selectedType = TYPE_OPTIONS.find((t) => t.value === form.type)
 
   function update(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      if (field === 'location') {
+        const coords = getCoordinatesForLocation(value.trim())
+        next.latitude = coords.lat
+        next.longitude = coords.lng
+      }
+      return next
+    })
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
@@ -61,6 +81,8 @@ export default function CreateReportPage({ user, onLogout }) {
         description: form.description.trim(),
         reported_at: `${form.date}T${toLocalTime(new Date())}`,
         image_url: form.image_url.trim() || null,
+        latitude: form.latitude,
+        longitude: form.longitude,
       })
       navigate('/app')
     } catch (err) {
@@ -247,6 +269,24 @@ export default function CreateReportPage({ user, onLogout }) {
                 </div>
                 {fieldError('date')}
               </label>
+            </div>
+
+            <div className="sq-input-card">
+              <span className="sq-input-label">
+                Titik Lokasi di Peta Kampus
+              </span>
+              <GoogleMapPin
+                lat={form.latitude}
+                lng={form.longitude}
+                title={form.title.trim() || form.location.trim() || 'Kampus UNKLAB'}
+                subtitle={form.location.trim()}
+                type={form.type}
+                height={240}
+                interactive
+                onSelect={({ lat, lng }) =>
+                  setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))
+                }
+              />
             </div>
 
             <label className="sq-input-card">

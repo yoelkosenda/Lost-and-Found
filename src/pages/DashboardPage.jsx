@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
 import ClaimAction from '../components/claims/ClaimAction.jsx'
+import GoogleMapPin from '../components/maps/GoogleMapPin.jsx'
+import { CAMPUS_CENTER, getCoordinatesForReport } from '../lib/campusLocations.js'
 
 export default function DashboardPage({ user, onLogout }) {
   const [data, setData] = useState(null)
@@ -199,6 +201,30 @@ export default function DashboardPage({ user, onLogout }) {
               </select>
             </div>
           </div>
+
+          {reports.length > 0 && (
+            <div className="sq-dash-map-wrap">
+              <GoogleMapPin
+                lat={CAMPUS_CENTER.lat}
+                lng={CAMPUS_CENTER.lng}
+                zoom={16}
+                height={260}
+                title="Peta Lokasi Barang Hilang & Ditemukan UNKLAB"
+                markers={reports.map((r) => {
+                  const c = getCoordinatesForReport(r)
+                  return {
+                    id: r.id,
+                    lat: c.lat,
+                    lng: c.lng,
+                    title: r.title,
+                    subtitle: `${r.type === 'Lost' ? 'Hilang' : 'Ditemukan'} · ${r.location}`,
+                    type: r.type,
+                  }
+                })}
+                onMarkerClick={(item) => navigate(`/app/reports/${item.id}`)}
+              />
+            </div>
+          )}
 
           {error ? (
             <div className="sq-state error">

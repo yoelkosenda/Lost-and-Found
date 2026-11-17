@@ -24,6 +24,12 @@ async function rpc(fnName, params = {}) {
     const { data, error } = await supabase.rpc(fnName, params)
     if (error) {
       const msg = error.message || ''
+      // PGRST202: RPC belum ada di database (migrasi Supabase belum dijalankan).
+      if (error.code === 'PGRST202') {
+        const err = new Error('Fitur ini belum aktif di database. Jalankan migrasi Supabase terbaru (folder supabase/migrations) terlebih dahulu.')
+        err.code = 'FEATURE_NOT_MIGRATED'
+        throw err
+      }
       if (/failed to fetch/i.test(msg)) {
         throw new Error('Gagal terhubung ke server Supabase. Periksa koneksi internet Anda atau muat ulang halaman.')
       }
@@ -97,4 +103,12 @@ export const api = {
       p_message: message,
     }),
   myClaims: () => rpc('api_my_claims', { p_token: getToken() }),
+  // Profil mahasiswa. Nomor telepon bersifat privat: hanya dikembalikan untuk pemilik akun.
+  profile: () => rpc('api_profile', { p_token: getToken() }),
+  updateProfile: ({ name, phone }) =>
+    rpc('api_update_profile', { p_token: getToken(), p_name: name, p_phone: phone }),
+  notifications: () => rpc('api_notifications', { p_token: getToken() }),
+  markNotificationsRead: () => rpc('api_mark_notifications_read', { p_token: getToken() }),
+  smartMatches: (reportId) =>
+    rpc('api_smart_matches', { p_token: getToken(), p_report_id: Number(reportId) }),
 }

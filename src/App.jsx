@@ -8,6 +8,7 @@ import CreateReportPage from './pages/CreateReportPage.jsx'
 import MyClaimsPage from './pages/MyClaimsPage.jsx'
 import MyReportsPage from './pages/MyReportsPage.jsx'
 import ReportDetailPage from './pages/ReportDetailPage.jsx'
+import ClaimDetailPage from './pages/ClaimDetailPage.jsx'
 
 export default function App() {
   const [path, setPath] = useState(window.location.pathname)
@@ -19,6 +20,8 @@ export default function App() {
   if (user === undefined) return <div className="boot">Memuat Lost and Found UNKLAB…</div>
   const reportDetailMatch = path.match(/^\/app\/reports\/(\d+)$/)
   if (reportDetailMatch) return user ? <ReportDetailPage id={reportDetailMatch[1]} user={user} onLogout={logout} /> : <Redirect to="/login" />
+  const claimDetailMatch = path.match(/^\/app\/claims\/(\d+)$/)
+  if (claimDetailMatch) return user ? <ClaimDetailPage id={claimDetailMatch[1]} user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/app') return user ? <DashboardPage user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/app/reports/new') return user ? <CreateReportPage user={user} onLogout={logout} /> : <Redirect to="/login" />
   if (path === '/app/my-reports') return user ? <MyReportsPage user={user} onLogout={logout} /> : <Redirect to="/login" />

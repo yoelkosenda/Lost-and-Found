@@ -4,6 +4,7 @@ import { Link, navigate } from '../router.jsx'
 
 export default function MyReportsPage({ user, onLogout }) {
   const [reports, setReports] = useState([])
+  const [incomingClaims, setIncomingClaims] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
@@ -16,7 +17,16 @@ export default function MyReportsPage({ user, onLogout }) {
     setError('')
     api.myReports()
       .then((data) => {
-        setReports(data?.reports ?? [])
+        const rows = data?.reports ?? []
+        setReports(rows)
+        Promise.all(rows.filter((r) => r.type === 'Found').map(async (r) => {
+          try {
+            const result = await api.reportClaims(r.id)
+            return [r.id, result?.claims ?? []]
+          } catch {
+            return [r.id, []]
+          }
+        })).then((entries) => setIncomingClaims(Object.fromEntries(entries)))
       })
       .catch((err) => {
         setError(err.message || 'Gagal memuat laporan Anda.')
@@ -362,6 +372,19 @@ export default function MyReportsPage({ user, onLogout }) {
                       </span>
                       <em className={`sq-status-badge ${r.type.toLowerCase()}`}>{r.status}</em>
                     </div>
+
+                    {r.type === 'Found' && incomingClaims[r.id]?.length > 0 && (
+                      <div className="sq-incoming-claims">
+                        <span className="sq-status-badge pending">{incomingClaims[r.id].length} klaim masuk</span>
+                        <div className="sq-incoming-claim-links">
+                          {incomingClaims[r.id].map((claim) => (
+                            <Link key={claim.id} to={`/app/claims/${claim.id}`} className="sq-incoming-claim-link">
+                              {claim.claimant_name} · Tinjau klaim
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="sq-report-card-body">
                       <div className="sq-report-top-row">

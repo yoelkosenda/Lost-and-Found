@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
 import StatusHistory from '../components/reports/StatusHistory.jsx'
+import ReportEditModal from '../components/reports/ReportEditModal.jsx'
 
 export default function MyReportsPage({ user, onLogout }) {
   const [reports, setReports] = useState([])
@@ -13,6 +14,7 @@ export default function MyReportsPage({ user, onLogout }) {
   const [updatingId, setUpdatingId] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [openHistory, setOpenHistory] = useState({})
+  const [editingReport, setEditingReport] = useState(null)
 
   const toggleHistory = (reportId) => {
     setOpenHistory((prev) => ({ ...prev, [reportId]: !prev[reportId] }))
@@ -72,7 +74,7 @@ export default function MyReportsPage({ user, onLogout }) {
   const filteredReports = useMemo(() => {
     return reports.filter((r) => {
       const matchType = type === 'Semua' || r.type === type
-      const matchQuery = `${r.title} ${r.category} ${r.location} ${r.description ?? ''}`
+      const matchQuery = `${r.title} ${r.category} ${r.color ?? ''} ${r.location} ${r.description ?? ''}`
         .toLowerCase()
         .includes(query.toLowerCase())
       return matchType && matchQuery
@@ -420,6 +422,9 @@ export default function MyReportsPage({ user, onLogout }) {
                       <div className="sq-work-pill">
                         {r.category} · {r.location}
                       </div>
+                      <div className="sq-work-pill">
+                        Warna: {r.color || 'Belum dicantumkan'}
+                      </div>
 
                       {r.description && <p className="sq-report-desc">{r.description}</p>}
 
@@ -488,6 +493,14 @@ export default function MyReportsPage({ user, onLogout }) {
                         >
                           {openHistory[r.id] ? 'Tutup Riwayat ▲' : 'Riwayat Status ▼'}
                         </button>
+                        <button
+                          type="button"
+                          className="sq-btn sq-btn-outline"
+                          disabled={isBusy}
+                          onClick={() => setEditingReport(r)}
+                        >
+                          Edit Laporan
+                        </button>
                       </div>
 
                       {openHistory[r.id] && (
@@ -530,6 +543,22 @@ export default function MyReportsPage({ user, onLogout }) {
           </div>
         </div>
       </footer>
+      {editingReport && (
+        <ReportEditModal
+          report={editingReport}
+          userId={user?.id}
+          onClose={() => setEditingReport(null)}
+          onSaved={(updatedReport) => {
+            setReports((prev) =>
+              prev.map((report) =>
+                String(report.id) === String(updatedReport.id) ? { ...report, ...updatedReport } : report
+              )
+            )
+            setEditingReport(null)
+            setFeedback({ type: 'success', message: 'Detail laporan berhasil diperbarui.' })
+          }}
+        />
+      )}
     </div>
   )
 }

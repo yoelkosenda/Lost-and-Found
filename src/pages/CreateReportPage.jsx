@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link, navigate } from '../router.jsx'
 import GoogleMapPin from '../components/maps/GoogleMapPin.jsx'
+import ReportImagePreview from '../components/reports/ReportImagePreview.jsx'
+import ReportReviewModal from '../components/reports/ReportReviewModal.jsx'
 import {
   CAMPUS_CENTER,
   CAMPUS_LOCATIONS,
@@ -15,7 +17,13 @@ const LOCATIONS = CAMPUS_LOCATION_NAMES
 
 const pad = (n) => String(n).padStart(2, '0')
 const toLocalDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-const toLocalTime = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+const toLocalDateTime = (date, time) => {
+  const offset = -new Date(`${date}T${time}:00`).getTimezoneOffset()
+  const sign = offset >= 0 ? '+' : '-'
+  const hours = pad(Math.floor(Math.abs(offset) / 60))
+  const minutes = pad(Math.abs(offset) % 60)
+  return `${date}T${time}:00${sign}${hours}:${minutes}`
+}
 
 const TYPE_OPTIONS = [
   { value: 'Lost', label: 'Barang Hilang (Lost)', hint: 'Saya kehilangan barang ini', status: 'Masih dicari' },
@@ -28,8 +36,10 @@ function validate(form, today) {
   if (!form.title.trim()) errors.title = 'Nama barang wajib diisi.'
   if (!form.category) errors.category = 'Pilih kategori barang.'
   if (!form.location.trim()) errors.location = 'Lokasi di kampus wajib diisi.'
+  if (!form.color.trim()) errors.color = 'Warna barang wajib diisi.'
   if (!form.date) errors.date = 'Tanggal kejadian wajib diisi.'
   else if (form.date > today) errors.date = 'Tanggal kejadian tidak boleh di masa depan.'
+  if (!/^\d{2}:\d{2}$/.test(form.estimated_time)) errors.estimated_time = 'Perkiraan jam kejadian wajib diisi.'
   if (!form.description.trim()) errors.description = 'Deskripsi barang wajib diisi.'
   if (form.image_url.trim() && !/^https?:\/\/\S+$/i.test(form.image_url.trim())) errors.image_url = 'URL foto harus diawali http:// atau https://.'
   return errors
@@ -42,18 +52,34 @@ export default function CreateReportPage({ user, onLogout }) {
     title: '',
     category: '',
     location: '',
+    color: '',
     date: today,
+    estimated_time: '',
     description: '',
     image_url: '',
     latitude: CAMPUS_CENTER.lat,
     longitude: CAMPUS_CENTER.lng,
   })
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState('')
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const initials = user.name.split(' ').map((x) => x[0]).join('')
   const selectedType = TYPE_OPTIONS.find((t) => t.value === form.type)
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview('')
+      return undefined
+    }
+    const url = URL.createObjectURL(imageFile)
+    setImagePreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [imageFile])
 
   function update(field, value) {
     setForm((prev) => {
@@ -68,29 +94,39 @@ export default function CreateReportPage({ user, onLogout }) {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
-  async function submit(e) {
+  function submit(e) {
     e.preventDefault()
     setServerError('')
     const found = validate(form, today)
+    if (errors.image) found.image = errors.image
     setErrors(found)
     if (Object.keys(found).length) {
       setServerError('Periksa kembali isian yang ditandai sebelum mengirim laporan.')
       return
     }
+    setReviewOpen(true)
+  }
+
+  async function publishReport() {
+    setServerError('')
     setLoading(true)
     try {
+      const imageUrl = imageFile
+        ? await api.uploadReportImage(imageFile, user.id)
+        : form.image_url.trim() || null
       await api.createReport({
         type: form.type,
         title: form.title.trim(),
         category: form.category,
         location: form.location.trim(),
+        color: form.color.trim(),
         description: form.description.trim(),
-        reported_at: `${form.date}T${toLocalTime(new Date())}`,
-        image_url: form.image_url.trim() || null,
+        reported_at: toLocalDateTime(form.date, form.estimated_time),
+        image_url: imageUrl,
         latitude: form.latitude,
         longitude: form.longitude,
       })
-      navigate('/app')
+      navigate('/app/my-reports')
     } catch (err) {
       setServerError(err.message)
       setLoading(false)
@@ -239,6 +275,42 @@ export default function CreateReportPage({ user, onLogout }) {
             <div className="sq-form-row">
               <label className="sq-input-card">
                 <span className="sq-input-label">
+                  Warna Barang <span className="sq-required" aria-hidden="true">*</span>
+                </span>
+                <div className="sq-input-underline">
+                  <input
+                    value={form.color}
+                    onChange={(e) => update('color', e.target.value)}
+                    placeholder="Contoh: hitam dengan garis merah"
+                    maxLength={100}
+                    required
+                    {...a11y('color')}
+                  />
+                </div>
+                {fieldError('color')}
+              </label>
+
+              <label className="sq-input-card">
+                <span className="sq-input-label">
+                  Perkiraan Jam Kejadian <span className="sq-required" aria-hidden="true">*</span>
+                </span>
+                <div className="sq-input-underline">
+                  <input
+                    type="time"
+                    value={form.estimated_time}
+                    onChange={(e) => update('estimated_time', e.target.value)}
+                    required
+                    {...a11y('estimated_time')}
+                  />
+                </div>
+                <small className="sq-field-hint">Masukkan waktu perkiraan barang hilang atau ditemukan.</small>
+                {fieldError('estimated_time')}
+              </label>
+            </div>
+
+            <div className="sq-form-row">
+              <label className="sq-input-card">
+                <span className="sq-input-label">
                   Lokasi di Kampus <span className="sq-required" aria-hidden="true">*</span>
                 </span>
                 <div className="sq-input-underline">
@@ -325,26 +397,69 @@ export default function CreateReportPage({ user, onLogout }) {
               {fieldError('description')}
             </label>
 
-            <label className="sq-input-card">
+            <div className="sq-input-card">
               <span className="sq-input-label">
-                URL Foto <span className="sq-optional">(opsional)</span>
+                Foto Barang <span className="sq-optional">(opsional)</span>
               </span>
-              <div className="sq-input-underline">
+              <div className="sq-file-input-wrap">
                 <input
-                  type="url"
-                  value={form.image_url}
-                  onChange={(e) => update('image_url', e.target.value)}
-                  placeholder="https://contoh.com/foto-barang.jpg"
-                  {...a11y('image_url')}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  aria-label="Pilih foto barang"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null
+                    if (file && (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
+                      setImageFile(null)
+                      setErrors((prev) => ({
+                        ...prev,
+                        image: file.size > 5 * 1024 * 1024
+                          ? 'Ukuran foto maksimal 5 MB.'
+                          : 'Foto harus berformat JPG, PNG, atau WebP.',
+                      }))
+                      e.target.value = ''
+                      return
+                    }
+                    setErrors((prev) => ({ ...prev, image: undefined }))
+                    setImageFile(file)
+                  }}
                 />
               </div>
-              {fieldError('image_url')}
-            </label>
+              <small className="sq-field-hint">Format JPG, PNG, atau WebP · maksimal 5 MB. Foto disimpan di Supabase Storage.</small>
+              {errors.image && <small className="sq-field-error" role="alert">{errors.image}</small>}
+              <label className="sq-image-url-field">
+                <span className="sq-field-hint">Atau gunakan URL foto</span>
+                <div className="sq-input-underline">
+                  <input
+                    type="url"
+                    value={form.image_url}
+                    onChange={(e) => update('image_url', e.target.value)}
+                    placeholder="https://contoh.com/foto-barang.jpg"
+                    {...a11y('image_url')}
+                  />
+                </div>
+                {fieldError('image_url')}
+              </label>
+              {(imagePreview || form.image_url) && (
+                <div className="sq-image-upload-preview">
+                  <img src={imagePreview || form.image_url} alt={`Pratinjau ${form.title || 'foto barang'}`} />
+                  <div className="sq-image-upload-actions">
+                    <button type="button" className="sq-btn sq-btn-outline" onClick={() => setPreviewOpen(true)}>
+                      Lihat Pratinjau
+                    </button>
+                    {imageFile && (
+                      <button type="button" className="sq-btn sq-btn-outline" onClick={() => setImageFile(null)}>
+                        Hapus Foto
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="sq-form-footer">
               <div className="sq-hero-actions">
                 <button type="submit" className="sq-btn sq-btn-lime sq-submit-btn" disabled={loading} aria-busy={loading}>
-                  {loading ? 'Menyimpan laporan…' : 'Kirim Laporan →'}
+                  Tinjau & Publikasikan →
                 </button>
                 <Link to="/app" className="sq-btn sq-btn-outline">
                   Batal
@@ -377,6 +492,25 @@ export default function CreateReportPage({ user, onLogout }) {
           </div>
         </div>
       </footer>
+      {previewOpen && (imagePreview || form.image_url) && (
+        <ReportImagePreview
+          imageUrl={imagePreview || form.image_url}
+          title={form.title.trim() || 'barang'}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
+      {reviewOpen && (
+        <ReportReviewModal
+          report={form}
+          imageUrl={imagePreview || form.image_url}
+          error={serverError}
+          loading={loading}
+          onClose={() => {
+            if (!loading) setReviewOpen(false)
+          }}
+          onPublish={publishReport}
+        />
+      )}
     </div>
   )
 }

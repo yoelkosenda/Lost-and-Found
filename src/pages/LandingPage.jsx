@@ -368,6 +368,7 @@ export default function LandingPage() {
                         <h3>{item.title}</h3>
                         <div className="sq-work-pill">
                           {item.category} · {item.location}
+                          {item.color ? ` · Warna: ${item.color}` : ''}
                         </div>
                       </div>
                       <Link

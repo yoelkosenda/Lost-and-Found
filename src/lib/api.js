@@ -84,11 +84,44 @@ export const api = {
       p_category: data.category,
       p_location: data.location,
       p_description: data.description,
+      p_color: data.color,
       p_reported_at: data.reported_at || null,
       p_image_url: data.image_url || null,
       p_latitude: data.latitude ?? null,
       p_longitude: data.longitude ?? null,
     }),
+  updateReport: (id, data) =>
+    rpc('api_update_report', {
+      p_token: getToken(),
+      p_report_id: Number(id),
+      p_title: data.title,
+      p_category: data.category,
+      p_location: data.location,
+      p_description: data.description,
+      p_color: data.color,
+      p_image_url: data.image_url || null,
+    }),
+  async uploadReportImage(file, userId) {
+    const extensionByType = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    }
+    const extension = extensionByType[file?.type]
+    if (!extension) throw new Error('Foto harus berformat JPG, PNG, atau WebP.')
+    if (file.size > 5 * 1024 * 1024) throw new Error('Ukuran foto maksimal 5 MB.')
+
+    const uniqueId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const path = `reports/${userId}/${uniqueId}.${extension}`
+    const { error } = await supabase.storage
+      .from('report-images')
+      .upload(path, file, { cacheControl: '3600', contentType: file.type, upsert: false })
+    if (error) throw new Error(error.message || 'Foto gagal diunggah ke penyimpanan.')
+
+    const { data } = supabase.storage.from('report-images').getPublicUrl(path)
+    if (!data?.publicUrl) throw new Error('URL foto yang diunggah tidak dapat dibuat.')
+    return data.publicUrl
+  },
   report: (id) =>
     rpc('api_report_detail', {
       p_token: getToken(),

@@ -685,19 +685,189 @@ begin
 end;
 $$;
 
+create or replace function public.lf_match_score(a public.reports, b public.reports)
+returns jsonb
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_score        int := 0;
+  v_reasons      text[] := '{}';
+  v_title_shared text[];
+  v_other_shared text[];
+  v_color_shared text[];
+  v_keywords     text[];
+  v_distance     double precision;
+begin
+  if lower(btrim(a.category)) = lower(btrim(b.category)) then
+    v_score := v_score + 35;
+    v_reasons := v_reasons || ('Kategori sama: ' || b.category);
+  end if;
+
+  if lower(btrim(a.location)) = lower(btrim(b.location)) then
+    v_score := v_score + 25;
+    v_reasons := v_reasons || ('Lokasi kampus sama: ' || b.location);
+  elsif a.latitude is not null and a.longitude is not null
+        and b.latitude is not null and b.longitude is not null then
+    v_distance := 111320 * sqrt(
+      power((a.latitude - b.latitude)::double precision, 2) +
+      power(((a.longitude - b.longitude) * cos(radians(a.latitude::double precision)))::double precision, 2)
+    );
+    if v_distance <= 150 then
+      v_score := v_score + 12;
+      v_reasons := v_reasons || ('Lokasi berdekatan: ' || b.location || ' (±' || round(v_distance::numeric) || ' m)');
+    end if;
+  end if;
+
+  if nullif(btrim(coalesce(a.color, '')), '') is not null
+     and nullif(btrim(coalesce(b.color, '')), '') is not null then
+    select coalesce(array_agg(w order by w), '{}') into v_color_shared
+    from unnest(public.lf_keywords(a.color)) as w
+    where w = any (public.lf_keywords(b.color));
+
+    if lower(btrim(a.color)) = lower(btrim(b.color)) or cardinality(v_color_shared) > 0 then
+      v_score := v_score + 15;
+      v_reasons := v_reasons || ('Warna serupa: ' || b.color);
+    end if;
+  end if;
+
+  select coalesce(array_agg(w order by w), '{}') into v_title_shared
+  from unnest(public.lf_keywords(a.title)) as w
+  where w = any (public.lf_keywords(b.title));
+
+  select coalesce(array_agg(w order by w), '{}') into v_other_shared
+  from unnest(public.lf_keywords(a.title || ' ' || coalesce(a.description, ''))) as w
+  where w = any (public.lf_keywords(b.title || ' ' || coalesce(b.description, '')))
+    and not (w = any (v_title_shared));
+
+  v_keywords := v_title_shared || v_other_shared;
+  if cardinality(v_keywords) > 0 then
+    v_score := v_score + least(40, 15 * cardinality(v_title_shared) + 5 * cardinality(v_other_shared));
+    v_reasons := v_reasons || ('Kata kunci cocok: ' || array_to_string(v_keywords[1:6], ', '));
+  end if;
+
+  v_score := least(100, v_score);
+
+  return jsonb_build_object(
+    'score', v_score,
+    'level', case when v_score >= 65 then 'Tinggi' when v_score >= 40 then 'Sedang' else 'Rendah' end,
+    'reasons', to_jsonb(v_reasons),
+    'keywords', to_jsonb(v_keywords)
+  );
+end;
+$$;
+
+create or replace function public.api_smart_matches(p_token text, p_report_id bigint)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id bigint := public.lf_session_user_id(p_token);
+  v_report  public.reports;
+begin
+  select * into v_report
+  from public.reports
+  where id = p_report_id and not coalesce(is_deleted, false);
+
+  if not found then
+    raise exception 'Laporan tidak ditemukan.';
+  end if;
+  if v_report.owner_id <> v_user_id then
+    raise exception 'Anda hanya dapat mencocokkan laporan milik Anda sendiri.';
+  end if;
+
+  return jsonb_build_object(
+    'report', jsonb_build_object(
+      'id', v_report.id,
+      'type', v_report.type,
+      'title', v_report.title,
+      'category', v_report.category,
+      'color', coalesce(v_report.color, ''),
+      'location', v_report.location,
+      'description', coalesce(v_report.description, ''),
+      'status', v_report.status,
+      'reported_at', v_report.reported_at
+    ),
+    'matches', coalesce((
+      select jsonb_agg(m.item order by m.score desc, m.reported_at desc)
+      from (
+        select x.item, (x.item ->> 'score')::int as score, x.reported_at
+        from (
+          select jsonb_build_object(
+                   'id', c.id,
+                   'type', c.type,
+                   'title', c.title,
+                   'category', c.category,
+                   'color', coalesce(c.color, ''),
+                   'location', c.location,
+                   'description', c.description,
+                   'status', c.status,
+                   'reported_at', c.reported_at,
+                   'image_url', c.image_url
+                 ) || public.lf_match_score(v_report, c) as item,
+                 c.reported_at
+          from public.reports c
+          where c.type <> v_report.type
+            and c.owner_id <> v_user_id
+            and not coalesce(c.is_deleted, false)
+            and not public.lf_is_closed_status(c.status)
+        ) x
+        where (x.item ->> 'score')::int >= 15
+        order by (x.item ->> 'score')::int desc, x.reported_at desc
+        limit 20
+      ) m
+    ), '[]'::jsonb),
+    'candidates', coalesce((
+      select jsonb_agg(c_pool.item order by c_pool.base_score desc, c_pool.reported_at desc)
+      from (
+        select (
+          jsonb_build_object(
+            'id', c.id,
+            'type', c.type,
+            'title', c.title,
+            'category', c.category,
+            'color', coalesce(c.color, ''),
+            'location', c.location,
+            'description', coalesce(c.description, ''),
+            'status', c.status,
+            'reported_at', c.reported_at,
+            'image_url', c.image_url
+          ) || public.lf_match_score(v_report, c)
+        ) as item,
+        (public.lf_match_score(v_report, c) ->> 'score')::int as base_score,
+        c.reported_at
+        from public.reports c
+        where c.type <> v_report.type
+          and c.owner_id <> v_user_id
+          and not coalesce(c.is_deleted, false)
+          and not public.lf_is_closed_status(c.status)
+        order by base_score desc, c.reported_at desc
+        limit 25
+      ) c_pool
+    ), '[]'::jsonb),
+    'generated_at', now()
+  );
+end;
+$$;
+
 revoke all on function public.lf_is_within_campus(double precision, double precision) from public, anon, authenticated;
 revoke all on function public.lf_auto_close_expired_reports() from public, anon, authenticated;
 revoke all on function public.lf_notify_claim_message() from public, anon, authenticated;
+revoke all on function public.lf_match_score(public.reports, public.reports) from public, anon, authenticated;
 
 revoke all on function public.api_update_report_status(text, bigint, text, text) from public;
 revoke all on function public.api_flag_report(text, bigint, text, text) from public;
 revoke all on function public.api_delete_report(text, bigint) from public;
 revoke all on function public.api_update_report(text, bigint, text, text, text, text, text, text, double precision, double precision) from public;
+revoke all on function public.api_smart_matches(text, bigint) from public;
 
 grant execute on function public.api_update_report_status(text, bigint, text, text) to anon, authenticated;
 grant execute on function public.api_flag_report(text, bigint, text, text) to anon, authenticated;
 grant execute on function public.api_delete_report(text, bigint) to anon, authenticated;
 grant execute on function public.api_update_report(text, bigint, text, text, text, text, text, text, double precision, double precision) to anon, authenticated;
+grant execute on function public.api_smart_matches(text, bigint) to anon, authenticated;
 
 notify pgrst, 'reload schema';
 commit;

@@ -21,9 +21,10 @@ Aplikasi ini dirancang dengan sistem desain **SquareUp Figma Dark Theme** dan te
    - Pintasan langsung `+ Lapor Barang Hilang` (`?type=Lost`) dan `+ Lapor Barang Temuan` (`?type=Found`).
    - Pemilihan lokasi gedung kampus UNKLAB yang tersinkronisasi dengan **Pin Peta Interaktif** serta **validasi batas radius kampus (600 m)**.
    - Unggah foto barang ke **Supabase Storage** (`JPG`, `PNG`, `WebP` maks. 5 MB) disertai modal **Pratinjau Laporan (Review Modal)** sebelum diterbitkan.
-5. **Smart Matching Laporan (`/app/matching`)**
-   - Pencocokan pintar laporan pasangan (*Lost* ↔ *Found*) berdasarkan kategori, kedekatan titik koordinat kampus, dan kata kunci judul/deskripsi.
-   - Menampilkan tingkat relevansi (**Tinggi**, **Sedang**, **Rendah**) beserta alasan kecocokan yang transparan.
+5. **AI Smart Matching Laporan dengan Google Gemini Flash (`/app/matching`)**
+   - Menggunakan model gratis **Google Gemini (`gemini-2.5-flash` / `gemini-2.0-flash`)** dengan *Structured JSON Output* yang dipadukan bersama pencocokan geospasial & heuristik PostgreSQL.
+   - Menganalisis kemiripan semantik antara laporan pasangan (*Lost* ↔ *Found*) berdasarkan sinonim/merek barang, ciri fisik, warna, kategori, dan kedekatan titik koordinat kampus.
+   - Menampilkan tingkat relevansi (**Tinggi**, **Sedang**, **Rendah**) beserta alasan analisis AI berbahasa Indonesia, serta dialog konfigurasi API Key Gemini langsung di halaman `/app/matching`.
 6. **Sistem Klaim 4-Tahap, Chat Internal 2-Arah & Opt-In Nomor Telepon (`/app/my-claims` & `/app/claims/:id`)**
    - Tahapan klaim terstruktur: **Diajukan** → **Verifikasi Penemu** → **Serah Terima** → **Sudah Dikembalikan**.
    - Penanganan multi-pengklaim otomatis pada barang yang sama.
@@ -66,9 +67,10 @@ Aplikasi ini dirancang dengan sistem desain **SquareUp Figma Dark Theme** dan te
    ```env
    VITE_SUPABASE_URL=https://your-project-ref.supabase.co
    VITE_SUPABASE_ANON_KEY=your-supabase-publishable-or-anon-key
+   VITE_GEMINI_API_KEY=your-free-google-ai-studio-gemini-api-key
    VITE_GOOGLE_MAPS_API_KEY=your-google-maps-javascript-api-key
    ```
-   *(Catatan: Jika `VITE_GOOGLE_MAPS_API_KEY` dikosongkan, peta otomatis menggunakan mode interaktif **Leaflet Dark Theme** tanpa memerlukan API key).*
+   *(Catatan: API Key gratis Google Gemini dapat dibuat di `https://aistudio.google.com/apikey` dan juga bisa dimasukkan langsung lewat tombol **⚙️ Gemini API** di halaman `/app/matching`. Jika `VITE_GOOGLE_MAPS_API_KEY` dikosongkan, peta otomatis menggunakan mode interaktif **Leaflet Dark Theme**).*
 
 4. **Jalankan aplikasi:**
    ```bash

@@ -150,9 +150,10 @@ const campusStats = [
   ['Cafeteria', 'Area Pantauan'],
 ]
 
-export default function LandingPage() {
+export default function LandingPage({ user }) {
   const [openFaq, setOpenFaq] = useState('01')
   const [reports, setReports] = useState(previewReports)
+  const portalHref = user ? '/app' : '/login'
 
   useEffect(() => {
     let active = true
@@ -195,8 +196,8 @@ export default function LandingPage() {
           </nav>
 
           <div className="sq-nav-cta">
-            <Link to="/login" className="sq-btn sq-btn-lime">
-              Masuk Portal
+            <Link to={portalHref} className="sq-btn sq-btn-lime">
+              {user ? 'Buka Dashboard →' : 'Masuk Portal'}
             </Link>
           </div>
         </div>
@@ -228,8 +229,8 @@ export default function LandingPage() {
               <a href="#laporan" className="sq-btn sq-btn-outline">
                 Lihat Laporan Terbaru
               </a>
-              <Link to="/login" className="sq-btn sq-btn-lime">
-                Mulai Mencari
+              <Link to={portalHref} className="sq-btn sq-btn-lime">
+                {user ? 'Ke Dashboard Saya' : 'Mulai Mencari'}
               </Link>
             </div>
           </div>
@@ -372,7 +373,7 @@ export default function LandingPage() {
                         </div>
                       </div>
                       <Link
-                        to="/login"
+                        to={user && item.id < 100 ? `/app/reports/${item.id}` : portalHref}
                         className="sq-icon-action"
                         aria-label={`Lihat detail laporan ${item.title}`}
                       >
@@ -505,8 +506,8 @@ export default function LandingPage() {
             <p>
               Bergabunglah bersama komunitas mahasiswa Universitas Klabat. Masuk ke akun Anda untuk mulai mencari atau melaporkan barang hari ini.
             </p>
-            <Link to="/login" className="sq-btn sq-btn-lime">
-              Masuk ke Akun Anda
+            <Link to={portalHref} className="sq-btn sq-btn-lime">
+              {user ? 'Buka Dashboard Anda' : 'Masuk ke Akun Anda'}
             </Link>
           </div>
         </section>

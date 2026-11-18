@@ -20,22 +20,48 @@ const REPORT_STATUSES = [
   'Masih dicari',
   'Menunggu pemilik',
   'Sedang diklaim',
+  'Dalam verifikasi',
+  'Sudah ditemukan',
   'Sudah dikembalikan',
   'Dibatalkan / Ditutup',
 ]
 
-export default function DashboardPage({ user, onLogout }) {
+function parseDashboardSearch(search) {
+  try {
+    const params = new URLSearchParams(search || window.location.search)
+    const q = params.get('q') || ''
+    const rawType = params.get('type') || ''
+    const type =
+      rawType.toLowerCase() === 'lost'
+        ? 'Lost'
+        : rawType.toLowerCase() === 'found'
+          ? 'Found'
+          : 'Semua'
+    return { q, type }
+  } catch {
+    return { q: '', type: 'Semua' }
+  }
+}
+
+export default function DashboardPage({ user, onLogout, search }) {
+  const initialParams = parseDashboardSearch(search)
   const [data, setData] = useState(null)
   const [claims, setClaims] = useState([])
   const [activityData, setActivityData] = useState(null)
   const [activityError, setActivityError] = useState('')
-  const [query, setQuery] = useState('')
-  const [type, setType] = useState('Semua')
+  const [query, setQuery] = useState(initialParams.q)
+  const [type, setType] = useState(initialParams.type)
   const [category, setCategory] = useState('Semua')
   const [location, setLocation] = useState('Semua')
   const [dateRange, setDateRange] = useState('Semua')
   const [statusFilter, setStatusFilter] = useState('Semua')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const next = parseDashboardSearch(search)
+    setQuery(next.q)
+    if (next.type !== 'Semua') setType(next.type)
+  }, [search])
 
   const hasActiveFilters =
     query.trim() !== '' ||
@@ -52,6 +78,7 @@ export default function DashboardPage({ user, onLogout }) {
     setLocation('Semua')
     setDateRange('Semua')
     setStatusFilter('Semua')
+    if (window.location.search) navigate('/app')
   }
 
   const load = () => {
@@ -108,7 +135,9 @@ export default function DashboardPage({ user, onLogout }) {
       }
       if (
         query.trim() &&
-        !`${r.title} ${r.category} ${r.color ?? ''} ${r.location}`.toLowerCase().includes(query.trim().toLowerCase())
+        !`${r.title} ${r.category} ${r.color ?? ''} ${r.location} ${r.description ?? ''}`
+          .toLowerCase()
+          .includes(query.trim().toLowerCase())
       ) {
         return false
       }
@@ -118,6 +147,10 @@ export default function DashboardPage({ user, onLogout }) {
 
   const found = data?.reports.filter((r) => r.type === 'Found').length ?? 0
   const lost = data?.reports.filter((r) => r.type === 'Lost').length ?? 0
+  const returnedCount =
+    data?.reports.filter(
+      (r) => r.status === 'Sudah dikembalikan' || r.status === 'Sudah ditemukan',
+    ).length ?? 0
   const total = data?.reports.length ?? '—'
 
   return (
@@ -143,12 +176,12 @@ export default function DashboardPage({ user, onLogout }) {
                 Temukan laporan terbaru dari sekitar kampus Universitas Klabat dan bantu satu barang berharga kembali ke tangan pemiliknya.
               </p>
               <div className="sq-hero-actions">
-                <Link to="/app/reports/new" className="sq-btn sq-btn-lime">
-                  + Buat laporan
+                <Link to="/app/reports/new?type=Lost" className="sq-btn sq-btn-outline">
+                  + Lapor Barang Hilang
                 </Link>
-                <a href="#laporan" className="sq-btn sq-btn-outline">
-                  Jelajahi Laporan ↓
-                </a>
+                <Link to="/app/reports/new?type=Found" className="sq-btn sq-btn-lime">
+                  + Lapor Barang Temuan
+                </Link>
                 <Link to="/app/matching" className="sq-btn sq-btn-outline">
                   Smart Matching ↗
                 </Link>
@@ -161,7 +194,11 @@ export default function DashboardPage({ user, onLogout }) {
               </div>
               <p>Barang ditemukan minggu ini</p>
               <strong>{found}</strong>
-              <small>Laporan aktif dari komunitas mahasiswa</small>
+              <small>
+                {returnedCount > 0
+                  ? `${returnedCount} laporan telah kembali ke pemiliknya`
+                  : 'Laporan aktif dari komunitas mahasiswa'}
+              </small>
             </div>
           </div>
         </section>
@@ -218,7 +255,7 @@ export default function DashboardPage({ user, onLogout }) {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Cari barang, kategori, atau lokasi..."
+                  placeholder="Cari barang, warna, kategori, atau lokasi..."
                   aria-label="Cari barang atau lokasi"
                 />
               </div>
@@ -484,11 +521,13 @@ export default function DashboardPage({ user, onLogout }) {
                 const statusLabel =
                   act.status === 'pending'
                     ? 'Dalam verifikasi'
-                    : act.status === 'approved'
-                      ? 'Klaim disetujui'
-                      : act.status === 'rejected'
-                        ? 'Klaim ditolak'
-                        : act.status
+                    : act.status === 'approved' || act.status === 'accepted'
+                      ? 'Tahap serah terima'
+                      : act.status === 'completed'
+                        ? 'Sudah dikembalikan'
+                        : act.status === 'rejected'
+                          ? 'Klaim ditolak'
+                          : act.status
 
                 return (
                   <article

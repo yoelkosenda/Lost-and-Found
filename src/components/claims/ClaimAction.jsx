@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from '../../router.jsx'
 import { claimStatus, CLOSED_REPORT_STATUSES } from '../../lib/claimStatus.js'
+import { showToast } from '../../lib/toast.js'
 import ClaimModal from './ClaimModal.jsx'
 
 /**
@@ -16,7 +17,11 @@ export default function ClaimAction({ report, user, existingStatus, onClaimed })
   if (report.type !== 'Found' || report.owner_id === user.id) return null
 
   const status = justSubmitted ? 'pending' : existingStatus
-  const claimed = status === 'pending' || status === 'approved' || status === 'accepted'
+  const claimed =
+    status === 'pending' ||
+    status === 'approved' ||
+    status === 'accepted' ||
+    status === 'completed'
   if (!claimed && CLOSED_REPORT_STATUSES.includes(report.status)) return null
 
   return (
@@ -31,7 +36,9 @@ export default function ClaimAction({ report, user, existingStatus, onClaimed })
 
       {claimed ? (
         <em className={`sq-status-badge ${claimStatus(status).badge}`}>
-          {status === 'pending' ? 'Klaim Telah Diajukan (Menunggu Verifikasi)' : claimStatus(status).label}
+          {status === 'pending'
+            ? 'Klaim Telah Diajukan (Menunggu Verifikasi)'
+            : claimStatus(status).label}
         </em>
       ) : (
         <button type="button" className="sq-btn sq-btn-lime" onClick={() => setOpen(true)}>
@@ -46,6 +53,7 @@ export default function ClaimAction({ report, user, existingStatus, onClaimed })
           onSubmitted={(claim) => {
             setOpen(false)
             setJustSubmitted(true)
+            showToast('Klaim kepemilikan berhasil dikirim ke penemu barang.', 'success')
             onClaimed?.(claim)
           }}
         />

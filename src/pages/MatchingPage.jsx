@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
+import { showToast } from '../lib/toast.js'
 import { Link } from '../router.jsx'
 import AppNavbar from '../components/layout/AppNavbar.jsx'
 import AppFooter from '../components/layout/AppFooter.jsx'
@@ -132,7 +133,10 @@ export default function MatchingPage({ user, onLogout }) {
                 <button
                   type="button"
                   className="sq-btn sq-btn-lime sq-toolbar-btn"
-                  onClick={() => runMatch(selectedId)}
+                  onClick={() => {
+                    runMatch(selectedId)
+                    showToast('Pencocokan ulang Smart Matching dijalankan.', 'info')
+                  }}
                   disabled={!selectedId || matching}
                 >
                   {matching ? 'Mencocokkan…' : 'Cocokkan ulang'}
@@ -140,6 +144,10 @@ export default function MatchingPage({ user, onLogout }) {
               </div>
             )}
           </div>
+
+          <p className="sq-match-note" role="note">
+            ⓘ Smart Matching hanya merekomendasikan kandidat berdasarkan kemiripan ciri. Tingkat relevansi bukan peluang kepemilikan dan bukan bukti — kepemilikan tetap diverifikasi oleh penemu melalui pengajuan klaim.
+          </p>
 
           {reportsError ? (
             <div className="sq-state error">

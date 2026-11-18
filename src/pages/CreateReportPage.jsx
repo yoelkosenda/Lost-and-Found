@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
+import { showToast } from '../lib/toast.js'
 import { Link, navigate } from '../router.jsx'
+import AppNavbar from '../components/layout/AppNavbar.jsx'
 import GoogleMapPin from '../components/maps/GoogleMapPin.jsx'
 import ReportImagePreview from '../components/reports/ReportImagePreview.jsx'
 import ReportReviewModal from '../components/reports/ReportReviewModal.jsx'
@@ -8,8 +10,11 @@ import {
   CAMPUS_CENTER,
   CAMPUS_LOCATIONS,
   CAMPUS_LOCATION_NAMES,
+  CAMPUS_MAX_RADIUS_METERS,
+  distanceFromCampusCenter,
   findNearestCampusLocation,
   getCoordinatesForLocation,
+  isWithinCampusBounds,
 } from '../lib/campusLocations.js'
 
 const CATEGORIES = ['Elektronik', 'Aksesori', 'Kunci', 'Dokumen/Buku', 'Perlengkapan', 'Pakaian', 'Lainnya']
@@ -30,6 +35,16 @@ const TYPE_OPTIONS = [
   { value: 'Found', label: 'Barang Ditemukan (Found)', hint: 'Saya menemukan barang ini', status: 'Menunggu pemilik' },
 ]
 
+function getTypeFromSearch(search) {
+  try {
+    const param = new URLSearchParams(search || window.location.search).get('type')
+    if (!param) return 'Lost'
+    return param.toLowerCase() === 'found' || param.toUpperCase() === 'F' ? 'Found' : 'Lost'
+  } catch {
+    return 'Lost'
+  }
+}
+
 function validate(form, today) {
   const errors = {}
   if (form.type !== 'Lost' && form.type !== 'Found') errors.type = 'Pilih tipe laporan.'
@@ -41,14 +56,19 @@ function validate(form, today) {
   else if (form.date > today) errors.date = 'Tanggal kejadian tidak boleh di masa depan.'
   if (!/^\d{2}:\d{2}$/.test(form.estimated_time)) errors.estimated_time = 'Perkiraan jam kejadian wajib diisi.'
   if (!form.description.trim()) errors.description = 'Deskripsi barang wajib diisi.'
-  if (form.image_url.trim() && !/^https?:\/\/\S+$/i.test(form.image_url.trim())) errors.image_url = 'URL foto harus diawali http:// atau https://.'
+  if (form.image_url.trim() && !/^https?:\/\/\S+$/i.test(form.image_url.trim())) {
+    errors.image_url = 'URL foto harus diawali http:// atau https://.'
+  }
+  if (!isWithinCampusBounds(form.latitude, form.longitude)) {
+    errors.map = `Titik pin berada di luar batas area Kampus UNKLAB (maksimal ${CAMPUS_MAX_RADIUS_METERS} m dari pusat kampus).`
+  }
   return errors
 }
 
-export default function CreateReportPage({ user, onLogout }) {
+export default function CreateReportPage({ user, onLogout, search }) {
   const today = toLocalDate(new Date())
-  const [form, setForm] = useState({
-    type: 'Lost',
+  const [form, setForm] = useState(() => ({
+    type: getTypeFromSearch(search),
     title: '',
     category: '',
     location: '',
@@ -59,7 +79,7 @@ export default function CreateReportPage({ user, onLogout }) {
     image_url: '',
     latitude: CAMPUS_CENTER.lat,
     longitude: CAMPUS_CENTER.lng,
-  })
+  }))
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -68,7 +88,11 @@ export default function CreateReportPage({ user, onLogout }) {
   const [serverError, setServerError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const initials = user.name.split(' ').map((x) => x[0]).join('')
+  useEffect(() => {
+    const nextType = getTypeFromSearch(search)
+    setForm((prev) => (prev.type === nextType ? prev : { ...prev, type: nextType }))
+  }, [search])
+
   const selectedType = TYPE_OPTIONS.find((t) => t.value === form.type)
 
   useEffect(() => {
@@ -91,7 +115,9 @@ export default function CreateReportPage({ user, onLogout }) {
       }
       return next
     })
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
+    if (errors[field] || (field === 'location' && errors.map)) {
+      setErrors((prev) => ({ ...prev, [field]: undefined, ...(field === 'location' ? { map: undefined } : {}) }))
+    }
   }
 
   function submit(e) {
@@ -126,6 +152,7 @@ export default function CreateReportPage({ user, onLogout }) {
         latitude: form.latitude,
         longitude: form.longitude,
       })
+      showToast('Laporan diterbitkan dan Smart Matching mulai mencocokkan kandidat!', 'success')
       navigate('/app/my-reports')
     } catch (err) {
       setServerError(err.message)
@@ -147,37 +174,7 @@ export default function CreateReportPage({ user, onLogout }) {
 
   return (
     <div className="sq-page">
-      <header className="sq-navbar">
-        <div className="sq-navbar-inner">
-          <Link to="/" className="sq-brand" aria-label="Beranda Lost and Found UNKLAB">
-            <span className="sq-brand-box">
-              <img src="/figma/logo-cube.svg" alt="" width="38" height="43" />
-            </span>
-            <span className="sq-brand-text">
-              Lost and Found<span>.</span>
-              <small>UNKLAB</small>
-            </span>
-          </Link>
-
-          <nav className="sq-nav-links" aria-label="Navigasi Buat Laporan">
-            <Link to="/app" className="sq-nav-item">← Kembali ke Dashboard</Link>
-            <span className="sq-nav-item active" aria-current="page">Buat Laporan</span>
-          </nav>
-
-          <div className="sq-account-bar">
-            <div className="sq-user-chip">
-              <span className="sq-avatar">{initials}</span>
-              <div className="sq-user-meta">
-                <b>{user.name}</b>
-                <small>Mahasiswa</small>
-              </div>
-            </div>
-            <button type="button" className="sq-btn sq-btn-outline sq-logout-btn" onClick={onLogout}>
-              Keluar ↗
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppNavbar user={user} onLogout={onLogout} />
 
       <main className="sq-container">
         <section className="sq-cta-banner">
@@ -353,9 +350,7 @@ export default function CreateReportPage({ user, onLogout }) {
             </div>
 
             <div className="sq-input-card">
-              <span className="sq-input-label">
-                Titik Lokasi di Peta Kampus
-              </span>
+              <span className="sq-input-label">Titik Lokasi di Peta Kampus</span>
               <GoogleMapPin
                 lat={form.latitude}
                 lng={form.longitude}
@@ -365,6 +360,14 @@ export default function CreateReportPage({ user, onLogout }) {
                 height={240}
                 interactive
                 onSelect={({ lat, lng }) => {
+                  if (!isWithinCampusBounds(lat, lng)) {
+                    const dist = Math.round(distanceFromCampusCenter(lat, lng))
+                    setErrors((prev) => ({
+                      ...prev,
+                      map: `Pin di luar batas kampus (${dist} m dari pusat UNKLAB, batas maks. ${CAMPUS_MAX_RADIUS_METERS} m). Pilih titik di dalam area kampus.`,
+                    }))
+                    return
+                  }
                   const nearestLocation = findNearestCampusLocation(lat, lng)
                   setForm((prev) => ({
                     ...prev,
@@ -372,9 +375,17 @@ export default function CreateReportPage({ user, onLogout }) {
                     latitude: lat,
                     longitude: lng,
                   }))
-                  if (errors.location) setErrors((prev) => ({ ...prev, location: undefined }))
+                  setErrors((prev) => ({ ...prev, location: undefined, map: undefined }))
                 }}
               />
+              <small className="sq-field-hint">
+                Pilih lokasi lalu klik peta untuk menggeser pin. Pin wajib berada di dalam batas area Kampus UNKLAB.
+              </small>
+              {errors.map && (
+                <small className="sq-field-error" role="alert">
+                  {errors.map}
+                </small>
+              )}
             </div>
 
             <label className="sq-input-card">
@@ -387,13 +398,15 @@ export default function CreateReportPage({ user, onLogout }) {
                   rows={5}
                   value={form.description}
                   onChange={(e) => update('description', e.target.value)}
-                  placeholder="Ciri khusus, warna, kondisi, atau instruksi pengambilan. Jangan tulis nomor telepon atau bukti kepemilikan rahasia."
+                  placeholder="Ciri umum saja. Ciri khusus simpan untuk verifikasi bukti klaim. Jangan tulis nomor identitas atau telepon lengkap."
                   maxLength={1000}
                   required
                   {...a11y('description')}
                 />
               </div>
-              <small className="sq-field-hint">{form.description.length}/1000 karakter</small>
+              <small className="sq-field-hint">
+                {form.description.length}/1000 karakter · Jangan tulis nomor identitas lengkap di deskripsi publik.
+              </small>
               {fieldError('description')}
             </label>
 
@@ -408,13 +421,18 @@ export default function CreateReportPage({ user, onLogout }) {
                   aria-label="Pilih foto barang"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null
-                    if (file && (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
+                    if (
+                      file &&
+                      (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+                        file.size > 5 * 1024 * 1024)
+                    ) {
                       setImageFile(null)
                       setErrors((prev) => ({
                         ...prev,
-                        image: file.size > 5 * 1024 * 1024
-                          ? 'Ukuran foto maksimal 5 MB.'
-                          : 'Foto harus berformat JPG, PNG, atau WebP.',
+                        image:
+                          file.size > 5 * 1024 * 1024
+                            ? 'Ukuran foto maksimal 5 MB.'
+                            : 'Foto harus berformat JPG, PNG, atau WebP.',
                       }))
                       e.target.value = ''
                       return
@@ -424,8 +442,14 @@ export default function CreateReportPage({ user, onLogout }) {
                   }}
                 />
               </div>
-              <small className="sq-field-hint">Format JPG, PNG, atau WebP · maksimal 5 MB. Foto disimpan di Supabase Storage.</small>
-              {errors.image && <small className="sq-field-error" role="alert">{errors.image}</small>}
+              <small className="sq-field-hint">
+                Format JPG, PNG, atau WebP · maksimal 5 MB. Jangan unggah foto kartu identitas utuh tanpa menyamarkan nomornya.
+              </small>
+              {errors.image && (
+                <small className="sq-field-error" role="alert">
+                  {errors.image}
+                </small>
+              )}
               <label className="sq-image-url-field">
                 <span className="sq-field-hint">Atau gunakan URL foto</span>
                 <div className="sq-input-underline">
@@ -441,13 +465,24 @@ export default function CreateReportPage({ user, onLogout }) {
               </label>
               {(imagePreview || form.image_url) && (
                 <div className="sq-image-upload-preview">
-                  <img src={imagePreview || form.image_url} alt={`Pratinjau ${form.title || 'foto barang'}`} />
+                  <img
+                    src={imagePreview || form.image_url}
+                    alt={`Pratinjau ${form.title || 'foto barang'}`}
+                  />
                   <div className="sq-image-upload-actions">
-                    <button type="button" className="sq-btn sq-btn-outline" onClick={() => setPreviewOpen(true)}>
+                    <button
+                      type="button"
+                      className="sq-btn sq-btn-outline"
+                      onClick={() => setPreviewOpen(true)}
+                    >
                       Lihat Pratinjau
                     </button>
                     {imageFile && (
-                      <button type="button" className="sq-btn sq-btn-outline" onClick={() => setImageFile(null)}>
+                      <button
+                        type="button"
+                        className="sq-btn sq-btn-outline"
+                        onClick={() => setImageFile(null)}
+                      >
                         Hapus Foto
                       </button>
                     )}
@@ -458,7 +493,12 @@ export default function CreateReportPage({ user, onLogout }) {
 
             <div className="sq-form-footer">
               <div className="sq-hero-actions">
-                <button type="submit" className="sq-btn sq-btn-lime sq-submit-btn" disabled={loading} aria-busy={loading}>
+                <button
+                  type="submit"
+                  className="sq-btn sq-btn-lime sq-submit-btn"
+                  disabled={loading}
+                  aria-busy={loading}
+                >
                   Tinjau & Publikasikan →
                 </button>
                 <Link to="/app" className="sq-btn sq-btn-outline">
@@ -468,7 +508,7 @@ export default function CreateReportPage({ user, onLogout }) {
               <div className="sq-demo-pill">
                 <span>Kolom bertanda</span>
                 <b>*</b>
-                <span>wajib diisi · Data kontak pribadi tidak ditampilkan di kartu publik.</span>
+                <span>wajib diisi · Nomor kontak tersimpan privat dan tidak tampil di halaman publik.</span>
               </div>
             </div>
           </form>
@@ -501,13 +541,14 @@ export default function CreateReportPage({ user, onLogout }) {
       )}
       {reviewOpen && (
         <ReportReviewModal
-          report={form}
-          imageUrl={imagePreview || form.image_url}
-          error={serverError}
-          loading={loading}
-          onClose={() => {
-            if (!loading) setReviewOpen(false)
+          report={{
+            ...form,
+            status: selectedType.status,
           }}
+          imageUrl={imagePreview || form.image_url.trim()}
+          loading={loading}
+          error={serverError}
+          onClose={() => !loading && setReviewOpen(false)}
           onPublish={publishReport}
         />
       )}

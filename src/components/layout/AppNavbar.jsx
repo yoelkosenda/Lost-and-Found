@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from '../../router.jsx'
+import { Link, navigate } from '../../router.jsx'
 import NotificationBell from '../notifications/NotificationBell.jsx'
 
 const LINKS = [
@@ -12,13 +12,20 @@ const LINKS = [
 ]
 
 /**
- * Navbar area mahasiswa: tautan utama, lonceng notifikasi, chip profil, dan tombol keluar.
+ * Navbar area mahasiswa: tautan utama, pencarian cepat global, lonceng notifikasi, chip profil, dan tombol keluar.
  * Di bawah 1100px tautan dipindah ke panel "Menu" agar header tidak melebar di mobile.
  */
 export default function AppNavbar({ user, onLogout, active }) {
   const [open, setOpen] = useState(false)
+  const [quickSearch, setQuickSearch] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('q') || ''
+    } catch {
+      return ''
+    }
+  })
   const headerRef = useRef(null)
-  const initials = user.name
+  const initials = (user?.name || 'Mahasiswa')
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
@@ -36,6 +43,17 @@ export default function AppNavbar({ user, onLogout, active }) {
       document.removeEventListener('mousedown', onClick)
     }
   }, [open])
+
+  const submitQuickSearch = (e) => {
+    e.preventDefault()
+    const trimmed = quickSearch.trim()
+    setOpen(false)
+    if (trimmed) {
+      navigate(`/app?q=${encodeURIComponent(trimmed)}`)
+    } else {
+      navigate('/app')
+    }
+  }
 
   return (
     <header className="sq-navbar" ref={headerRef}>
@@ -64,12 +82,30 @@ export default function AppNavbar({ user, onLogout, active }) {
               {link.label}
             </Link>
           ))}
+          <form className="sq-nav-quick-search sq-nav-item-menu-only" role="search" onSubmit={submitQuickSearch}>
+            <input
+              type="search"
+              value={quickSearch}
+              onChange={(e) => setQuickSearch(e.target.value)}
+              placeholder="Cari barang di kampus…"
+              aria-label="Cari barang di kampus"
+            />
+          </form>
           <button type="button" className="sq-nav-item sq-nav-item-menu-only sq-nav-logout" onClick={onLogout}>
             Keluar ↗
           </button>
         </nav>
 
         <div className="sq-account-bar">
+          <form className="sq-nav-search-form" role="search" onSubmit={submitQuickSearch}>
+            <input
+              type="search"
+              value={quickSearch}
+              onChange={(e) => setQuickSearch(e.target.value)}
+              placeholder="Cari barang…"
+              aria-label="Pencarian cepat barang"
+            />
+          </form>
           <NotificationBell active={active === 'notifications'} />
           <Link
             to="/app/profile"

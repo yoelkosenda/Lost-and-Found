@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { announceUnread, notificationKind, timeAgo } from '../lib/notifications.js'
+import { showToast } from '../lib/toast.js'
 import { Link } from '../router.jsx'
 import AppNavbar from '../components/layout/AppNavbar.jsx'
 import AppFooter from '../components/layout/AppFooter.jsx'
@@ -32,6 +33,7 @@ export default function NotificationsPage({ user, onLogout }) {
       await api.markNotificationsRead()
       setData((d) => ({ ...d, unread_count: 0, notifications: d.notifications.map((n) => ({ ...n, is_read: true })) }))
       announceUnread(0)
+      showToast('Semua notifikasi ditandai sudah dibaca.', 'success')
     } catch (e) {
       setMarkError(e.message)
     } finally {

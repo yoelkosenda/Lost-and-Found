@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import { requestNotificationsRefresh } from '../lib/notifications.js'
+import { showToast } from '../lib/toast.js'
 import { Link } from '../router.jsx'
 import AppNavbar from '../components/layout/AppNavbar.jsx'
 import AppFooter from '../components/layout/AppFooter.jsx'
@@ -59,6 +60,7 @@ export default function ProfilePage({ user, onLogout, onUserChange }) {
       setName(data.profile.name)
       setPhone(displayPhone(data.profile.phone))
       setSaved('Profil berhasil disimpan.')
+      showToast('Pengaturan kontak dan profil berhasil disimpan.', 'success')
       setStats((s) => ({ ...s, unread: data.unread_notifications ?? s?.unread }))
       requestNotificationsRefresh()
       onUserChange?.({ id: data.profile.id, name: data.profile.name, email: data.profile.email, role: data.profile.role })

@@ -1,143 +1,118 @@
 # Lost and Found UNKLAB
 
-Portal web komunitas mahasiswa **Universitas Klabat (UNKLAB)** untuk melaporkan, mencari, dan mengembalikan barang yang hilang (*Lost*) maupun ditemukan (*Found*) di lingkungan kampus. Aplikasi ini dilengkapi dengan *Landing Page* publik, halaman autentikasi mahasiswa, serta *Dashboard* utama yang terhubung ke backend Express dan database SQLite lokal.
+Portal web komunitas mahasiswa **Universitas Klabat (UNKLAB)** untuk melaporkan, mencari, mencocokkan (*Smart Matching*), memverifikasi klaim, dan mengembalikan barang yang hilang (*Lost*) maupun ditemukan (*Found*) di lingkungan kampus.
+
+Aplikasi ini dirancang dengan sistem desain **SquareUp Figma Dark Theme** dan terhubung ke **Supabase** (PostgreSQL RPC + Supabase Storage) dengan dukungan peta interaktif **Google Maps / Leaflet**.
+
+---
+
+## ✨ Fitur Utama
+
+1. **Landing Page Publik & Pratinjau Komunitas (`/`)**
+   - Menampilkan statistik laporan, panduan 4 langkah pengembalian barang, laporan komunitas terbaru secara *real-time*, dan FAQ interaktif.
+2. **Autentikasi Mahasiswa (`/login`)**
+   - Mendukung akun demo mahasiswa UNKLAB (`student@unklab.ac.id` / `unklab123`) serta pengelolaan sesi aman.
+3. **Dashboard Komunitas & Filter Lanjutan (`/app`)**
+   - Pencarian cepat *real-time* (juga tersedia dari bilah navigasi atas di setiap halaman).
+   - Filter berdasarkan **Tipe (`Lost` / `Found`)**, **Kategori**, **Lokasi Gedung Kampus UNKLAB**, **Rentang Tanggal (`Hari ini`, `7 hari terakhir`)**, dan **Status Laporan**.
+   - **Peta Laporan Aktif Interaktif** yang menampilkan titik pin seluruh barang hilang dan temuan di kampus.
+   - **Jejak Aktivitas Komunitas (Activity Feed)** terbaru untuk laporan dan klaim.
+4. **Buat & Tinjau Laporan Barang (`/app/reports/new`)**
+   - Pintasan langsung `+ Lapor Barang Hilang` (`?type=Lost`) dan `+ Lapor Barang Temuan` (`?type=Found`).
+   - Pemilihan lokasi gedung kampus UNKLAB yang tersinkronisasi dengan **Pin Peta Interaktif** serta **validasi batas radius kampus (600 m)**.
+   - Unggah foto barang ke **Supabase Storage** (`JPG`, `PNG`, `WebP` maks. 5 MB) disertai modal **Pratinjau Laporan (Review Modal)** sebelum diterbitkan.
+5. **Smart Matching Laporan (`/app/matching`)**
+   - Pencocokan pintar laporan pasangan (*Lost* ↔ *Found*) berdasarkan kategori, kedekatan titik koordinat kampus, dan kata kunci judul/deskripsi.
+   - Menampilkan tingkat relevansi (**Tinggi**, **Sedang**, **Rendah**) beserta alasan kecocokan yang transparan.
+6. **Sistem Klaim 4-Tahap, Chat Internal 2-Arah & Opt-In Nomor Telepon (`/app/my-claims` & `/app/claims/:id`)**
+   - Tahapan klaim terstruktur: **Diajukan** → **Verifikasi Penemu** → **Serah Terima** → **Sudah Dikembalikan**.
+   - Penanganan multi-pengklaim otomatis pada barang yang sama.
+   - **Ruang Pesan Internal 2-Arah** antara pengaju klaim dan penemu barang untuk menyepakati lokasi & waktu serah terima di kampus.
+   - **Persetujuan Berbagi Nomor Telepon Dua Pihak (Mutual Consent):** Nomor telepon tetap tersembunyi sampai kedua belah pihak mencentang persetujuan.
+7. **Laporan Saya, Riwayat Status (Timeline), & Moderasi Komunitas (`/app/my-reports` & `/app/reports/:id`)**
+   - Kelola laporan: **Edit Detail & Titik Peta**, **Ubah Status Cepat**, **Tutup / Batalkan Laporan dengan Pencatatan Alasan**, serta **Hapus Laporan**.
+   - **Timeline Riwayat Status** yang mencatat setiap perubahan status beserta waktu, pelaku, dan alasannya.
+   - **Aduan Penyalahgunaan Komunitas (Tanpa Admin):** Mahasiswa dapat melaporkan kiriman bermasalah, dan laporan otomatis ditutup jika menerima ≥ 3 aduan valid dari mahasiswa berbeda.
+   - **Penutupan Otomatis Akhir Semester (90 Hari):** Laporan yang melewati masa aktif 90 hari otomatis ditutup oleh sistem.
+8. **Notifikasi & Profil Mahasiswa (`/app/notifications` & `/app/profile`)**
+   - Lonceng notifikasi dengan *badge* jumlah belum dibaca untuk klaim baru, perubahan status klaim, pesan ruang klaim, dan kandidat *Smart Matching* berelevansi Tinggi.
+   - Pengelolaan nama tampilan dan nomor telepon privat dengan penyimpanan terstandarisasi (`+628...`).
 
 ---
 
 ## 📋 Prasyarat (Prerequisites)
 
-Sebelum menjalankan proyek ini di komputer lokal, pastikan perangkat Anda telah memenuhi prasyarat berikut:
-
-1. **Node.js** — Versi **20.x LTS** atau lebih baru (disarankan agar kompatibel dengan modul native `better-sqlite3` dan Vite terbaru).
-   - Cek versi: `node -v`
-2. **npm** — Versi **10.x** atau lebih baru (terinstal otomatis bersama Node.js).
-   - Cek versi: `npm -v`
-3. **Git** — Untuk melakukan *clone* repositori dan berpindah *branch*.
-   - Cek versi: `git --version`
-4. **Browser Modern** — Google Chrome, Microsoft Edge, Mozilla Firefox, atau Safari versi terbaru.
-5. *(Opsional untuk Windows/macOS/Linux)* Jika `better-sqlite3` memerlukan kompilasi ulang pada arsitektur tertentu, pastikan C++ Build Tools (seperti *Visual Studio Build Tools* di Windows atau *Xcode Command Line Tools* di macOS) tersedia.
+1. **Node.js** — Versi **20.x LTS** atau lebih baru (`node -v`).
+2. **npm** — Versi **10.x** atau lebih baru (`npm -v`).
+3. **Browser Modern** — Chrome, Edge, Firefox, atau Safari.
 
 ---
 
 ## 🚀 Instalasi & Menjalankan Aplikasi
 
-1. **Clone repositori ini:**
+1. **Clone repositori:**
    ```bash
    git clone https://github.com/yoelkosenda/Lost-and-Found.git
    cd Lost-and-Found
    ```
 
-2. **(Opsional) Pilih branch tampilan yang diinginkan:**
-   - Branch utama (desain editorial terang):
-     ```bash
-     git checkout main
-     ```
-   - Branch desain tema gelap (adaptasi template Figma):
-     ```bash
-     git checkout feature/figma-dark-design
-     ```
-
-3. **Instal seluruh dependensi:**
+2. **Instal dependensi:**
    ```bash
    npm install
    ```
 
-4. **Jalankan aplikasi (Frontend + Backend sekaligus):**
+3. **Konfigurasi Environment Variables (`.env`):**
+   Salin `.env.example` menjadi `.env` dan sesuaikan jika diperlukan:
+   ```env
+   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-supabase-publishable-or-anon-key
+   VITE_GOOGLE_MAPS_API_KEY=your-google-maps-javascript-api-key
+   ```
+   *(Catatan: Jika `VITE_GOOGLE_MAPS_API_KEY` dikosongkan, peta otomatis menggunakan mode interaktif **Leaflet Dark Theme** tanpa memerlukan API key).*
+
+4. **Jalankan aplikasi:**
    ```bash
    npm run dev
    ```
-   Perintah `npm run dev` akan menjalankan dua layanan secara bersamaan menggunakan `concurrently`:
-   - **Frontend (React + Vite):** `http://localhost:5173`
-   - **Backend API (Express + SQLite):** `http://localhost:3001`
+   Buka **`http://localhost:5173`** di browser Anda.
 
-   > **Catatan:** Vite telah dikonfigurasi untuk mem-*proxy* seluruh permintaan `/api` ke server Express (`http://localhost:3001`), sehingga Anda cukup membuka **`http://localhost:5173`** di browser.
-
-   Jika ingin menjalankan layanan secara terpisah di dua terminal:
-   - Terminal 1 (Backend): `npm run dev:server`
-   - Terminal 2 (Frontend): `npm run dev:client`
+5. **Build untuk produksi:**
+   ```bash
+   npm run build
+   ```
 
 ---
 
-## 📖 Cara Menggunakan Aplikasi
-
-### 1. Menjelajahi Halaman Publik (Landing Page — `/`)
-- Buka `http://localhost:5173` di browser Anda.
-- Pada halaman beranda, Anda dapat melihat ringkasan statistik komunitas, langkah-langkah cara kerja sistem, serta pratinjau laporan barang hilang/temuan terbaru di kampus UNKLAB.
-- Klik tombol **"Masuk"** / **"Masuk Portal"** atau **"Mulai mencari"** untuk menuju halaman login.
-
-### 2. Masuk ke Akun Mahasiswa (Login — `/login`)
-- Gunakan akun demo mahasiswa lokal yang sudah disediakan secara otomatis oleh database *seed*:
+## 🔑 Akun Demo Mahasiswa
 
 | Peran | Email Mahasiswa | Password |
 | :--- | :--- | :--- |
 | Mahasiswa (`student`) | `student@unklab.ac.id` | `unklab123` |
 
-- Anda dapat menekan tombol **"Tampilkan"** pada kolom password untuk memeriksa input password, lalu klik **"Masuk ke dashboard →"**.
-- Sistem akan membuat sesi autentikasi berbasis *HTTP-only cookie* (`lf_session`) dan mengalihkan Anda ke halaman `/app`.
-
-### 3. Menggunakan Dashboard Komunitas (`/app`)
-Setelah berhasil masuk, Anda dapat mengakses fitur-fitur berikut di *Dashboard*:
-- **Ringkasan Statistik:** Melihat jumlah laporan *Barang hilang* (`Lost`), *Barang ditemukan* (`Found`), dan *Total laporan* aktif di komunitas kampus.
-- **Pencarian Laporan Real-Time:** Ketik nama barang, kategori, atau lokasi kampus (misalnya: `Dompet`, `AirPods`, `Perpustakaan`, `Student Center`, `Cafeteria`) pada kolom pencarian untuk menyaring daftar laporan secara langsung.
-- **Filter Tipe Laporan:** Gunakan menu *dropdown* filter untuk menampilkan:
-  - **Semua** — Seluruh laporan barang hilang dan temuan.
-  - **Lost** — Hanya barang yang dilaporkan hilang (*Masih dicari*).
-  - **Found** — Hanya barang temuan yang diamankan (*Menunggu pemilik*).
-- **Memantau Status & Detail Kartu Laporan:** Setiap kartu laporan menampilkan tipe laporan, judul barang, kategori, titik lokasi kampus, tanggal pelaporan, dan label status teks yang jelas.
-- **Keluar dari Sesi (Logout):** Klik tombol **"Keluar ↗"** di pojok kanan atas bilah navigasi untuk mengakhiri sesi dan kembali ke halaman beranda (`/`).
-
 ---
 
-## 🗄️ Backend, Database & Reset Data Demo
-
-- Backend berada di direktori `server/` menggunakan **Express** dan **SQLite** (`better-sqlite3`).
-- Saat server pertama kali dijalankan, file database lokal dibuat otomatis di `server/data/lost-and-found.db` beserta tabel (`users`, `reports`, `claims`) dan data *seed* awal.
-- File database lokal (`server/data/lost-and-found.db`) dan `.env` diabaikan oleh Git (`.gitignore`).
-- **Cara Reset Data Demo:** Hentikan server (`Ctrl + C`), hapus file `server/data/lost-and-found.db`, lalu jalankan kembali `npm run dev`. Data awal akan dibuat ulang secara otomatis.
-
-### Daftar Endpoint API Awal
-| Method | Endpoint | Deskripsi | Autentikasi |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/login` | Masuk dengan email & password mahasiswa | Publik |
-| `POST` | `/api/auth/logout` | Menghapus sesi login (`lf_session`) | Cookie Sesi |
-| `GET` | `/api/auth/me` | Mengambil profil mahasiswa yang sedang login | Cookie Sesi |
-| `GET` | `/api/reports` | Mengambil daftar seluruh laporan terbaru | Cookie Sesi |
-
----
-
-## 🛠️ Pemeriksaan Build Produksi
-
-Untuk memastikan kode frontend dapat dikompilasi untuk produksi tanpa error:
-
-```bash
-npm run build
-npm run preview
-```
-
----
-
-## 📁 Struktur Proyek Utama
+## 🗂️ Struktur Direktori Utama
 
 ```text
 Lost-and-Found/
-├── public/                 # Aset statis publik
-├── server/
-│   ├── index.js            # Server Express & endpoint API (/api/*)
-│   ├── db.js               # Inisialisasi SQLite, skema tabel, & data seed
-│   └── data/               # Lokasi file runtime SQLite (di-ignore Git)
+├── public/figma/            # Aset ikon SVG, logo, dan tekstur gelombang SquareUp Dark Theme
 ├── src/
-│   ├── components/         # Komponen UI modular
+│   ├── components/
+│   │   ├── claims/          # ClaimAction & ClaimModal
+│   │   ├── layout/          # AppNavbar (Global Search + Bell), AppFooter, ToastHost
+│   │   ├── maps/            # GoogleMapPin (Google Maps JS SDK + Fallback Leaflet Interaktif)
+│   │   ├── notifications/   # NotificationBell
+│   │   └── reports/         # ReportEditModal, ReportReviewModal, ReportImagePreview, StatusHistory
 │   ├── lib/
-│   │   └── api.js          # Adapter tunggal untuk komunikasi HTTP ke API
-│   ├── pages/
-│   │   ├── LandingPage.jsx # Halaman publik utama (/)
-│   │   ├── LoginPage.jsx   # Halaman autentikasi mahasiswa (/login)
-│   │   └── DashboardPage.jsx # Halaman utama aplikasi (/app)
-│   ├── styles/
-│   │   └── global.css      # Styling & sistem desain global
-│   ├── App.jsx             # Pengaturan rute utama & sesi pengguna
-│   ├── router.jsx          # Custom lightweight History API router
-│   └── main.jsx            # Entry point aplikasi React
-├── AGENTS.md               # Panduan aturan arsitektur proyek
-└── package.json            # Konfigurasi skrip dan dependensi
+│   │   ├── api.js           # Satu-satunya adapter komunikasi RPC & Storage Supabase
+│   │   ├── campusLocations.js # Titik koordinat 18 lokasi Kampus UNKLAB & validasi batas radius
+│   │   ├── claimStatus.js   # Konfigurasi status klaim 4-tahap
+│   │   ├── notifications.js # Helper event & format waktu notifikasi
+│   │   ├── supabase.js      # Inisialisasi client Supabase
+│   │   └── toast.js         # Sistem notifikasi toast aksesibel
+│   ├── pages/               # Halaman tingkat rute (Landing, Login, Dashboard, CreateReport, dll.)
+│   ├── styles/global.css    # Stylesheet utama SquareUp Figma Dark Theme
+│   ├── App.jsx              # Definisi rute + Code-Splitting + Halaman 404
+│   └── router.jsx           # Lightweight History API router (Link & navigate)
+└── supabase/migrations/     # Skema SQL, RPC SECURITY DEFINER, Trigger, & Kebijakan Storage
 ```

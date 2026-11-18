@@ -1,15 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { claimStatus } from '../lib/claimStatus.js'
 import { Link } from '../router.jsx'
+import AppNavbar from '../components/layout/AppNavbar.jsx'
 
-// SQLite menyimpan CURRENT_TIMESTAMP dalam UTC ("YYYY-MM-DD HH:MM:SS").
-const formatDate = (value) =>
-  new Date(`${value.replace(' ', 'T')}Z`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+const formatDate = (value) => {
+  if (!value) return '—'
+  const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`
+  const d = new Date(normalized)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 export default function MyClaimsPage({ user, onLogout }) {
   const [claims, setClaims] = useState(null)
   const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
+  const [statusTab, setStatusTab] = useState('all')
 
   const load = () => {
     setError('')
@@ -21,45 +28,31 @@ export default function MyClaimsPage({ user, onLogout }) {
 
   useEffect(load, [])
 
-  const count = (...statuses) => (claims ? claims.filter((c) => statuses.includes(c.status)).length : '—')
-  const initials = user.name
-    .split(' ')
-    .map((x) => x[0])
-    .join('')
+  const count = (...statuses) =>
+    claims ? claims.filter((c) => statuses.includes(c.status)).length : '—'
+
+  const filteredClaims = useMemo(() => {
+    if (!claims) return []
+    return claims.filter((c) => {
+      if (statusTab === 'pending' && c.status !== 'pending') return false
+      if (statusTab === 'handover' && !['approved', 'accepted'].includes(c.status)) return false
+      if (statusTab === 'completed' && c.status !== 'completed') return false
+      if (statusTab === 'rejected' && c.status !== 'rejected') return false
+      if (
+        query.trim() &&
+        !`${c.report_title ?? ''} ${c.report_category ?? ''} ${c.report_location ?? ''} ${c.message ?? ''}`
+          .toLowerCase()
+          .includes(query.trim().toLowerCase())
+      ) {
+        return false
+      }
+      return true
+    })
+  }, [claims, statusTab, query])
 
   return (
     <div className="sq-page">
-      <header className="sq-navbar">
-        <div className="sq-navbar-inner">
-          <Link to="/" className="sq-brand" aria-label="Beranda Lost and Found UNKLAB">
-            <span className="sq-brand-box">
-              <img src="/figma/logo-cube.svg" alt="" width="38" height="43" />
-            </span>
-            <span className="sq-brand-text">
-              Lost and Found<span>.</span>
-              <small>UNKLAB</small>
-            </span>
-          </Link>
-
-          <nav className="sq-nav-links" aria-label="Navigasi Dashboard">
-            <Link to="/app" className="sq-nav-item">Dashboard</Link>
-            <Link to="/app/my-claims" className="sq-nav-item active" aria-current="page">Klaim Saya <span className="sq-nav-count">{claims?.length ?? '…'}</span></Link>
-          </nav>
-
-          <div className="sq-account-bar">
-            <div className="sq-user-chip">
-              <span className="sq-avatar">{initials}</span>
-              <div className="sq-user-meta">
-                <b>{user.name}</b>
-                <small>Mahasiswa</small>
-              </div>
-            </div>
-            <button type="button" className="sq-btn sq-btn-outline sq-logout-btn" onClick={onLogout}>
-              Keluar ↗
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppNavbar user={user} onLogout={onLogout} active="my-claims" />
 
       <main className="sq-container">
         <section className="sq-dash-hero">
@@ -73,11 +66,10 @@ export default function MyClaimsPage({ user, onLogout }) {
               <h1>
                 Klaim Saya.
                 <br />
-                <span>Pantau proses verifikasinya.</span>
+                <span>Pantau verifikasi & serah terima.</span>
               </h1>
               <p>
-                Semua barang temuan yang pernah Anda klaim ada di sini. Bukti kepemilikan yang Anda kirim hanya terlihat
-                oleh Anda dan dipakai untuk verifikasi.
+                Semua barang temuan yang pernah Anda klaim ada di sini. Bukti kepemilikan yang Anda kirim bersifat rahasia dan hanya terlihat oleh penemu barang untuk verifikasi.
               </p>
               <div className="sq-hero-actions">
                 <Link to="/app" className="sq-btn sq-btn-lime">
@@ -104,9 +96,9 @@ export default function MyClaimsPage({ user, onLogout }) {
             <small>Sedang diperiksa penemu barang</small>
           </article>
           <article className="sq-stat-card">
-            <p>Klaim Diterima</p>
-            <strong>{count('approved', 'accepted')}</strong>
-            <small>Bukti kepemilikan cocok</small>
+            <p>Disetujui / Dikembalikan</p>
+            <strong>{count('approved', 'accepted', 'completed')}</strong>
+            <small>Tahap serah terima atau selesai</small>
           </article>
           <article className="sq-stat-card">
             <p>Klaim Ditolak</p>
@@ -121,7 +113,58 @@ export default function MyClaimsPage({ user, onLogout }) {
               <span className="sq-kicker-pill">DAFTAR KLAIM</span>
               <h2>Barang yang Anda Klaim</h2>
             </div>
+
+            <div className="sq-filters">
+              <div className="sq-search-field">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Cari judul, lokasi, atau bukti klaim..."
+                  aria-label="Cari klaim saya"
+                />
+              </div>
+            </div>
           </div>
+
+          {claims && claims.length > 0 && (
+            <div
+              role="tablist"
+              aria-label="Filter status klaim"
+              style={{
+                display: 'flex',
+                gap: '8px',
+                padding: '14px 44px',
+                borderBottom: '1px solid var(--grey-15)',
+                background: 'rgba(26, 26, 26, 0.4)',
+                flexWrap: 'wrap',
+              }}
+            >
+              {[
+                { key: 'all', label: 'Semua', num: claims.length },
+                { key: 'pending', label: 'Menunggu Verifikasi', num: count('pending') },
+                { key: 'handover', label: 'Tahap Serah Terima', num: count('approved', 'accepted') },
+                { key: 'completed', label: 'Sudah Dikembalikan', num: count('completed') },
+                { key: 'rejected', label: 'Ditolak', num: count('rejected') },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={statusTab === tab.key}
+                  className={`sq-nav-item ${statusTab === tab.key ? 'active' : ''}`}
+                  style={{
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                  }}
+                  onClick={() => setStatusTab(tab.key)}
+                >
+                  {tab.label} ({tab.num})
+                </button>
+              ))}
+            </div>
+          )}
 
           {error ? (
             <div className="sq-state error">
@@ -132,9 +175,20 @@ export default function MyClaimsPage({ user, onLogout }) {
             </div>
           ) : !claims ? (
             <div className="sq-state">Memuat riwayat klaim Anda…</div>
-          ) : claims.length ? (
+          ) : claims.length === 0 ? (
+            <div className="sq-state sq-state-empty">
+              <span>Anda belum pernah mengajukan klaim. Temukan barang Anda di daftar barang temuan.</span>
+              <Link to="/app" className="sq-btn sq-btn-lime">
+                Lihat Barang Temuan
+              </Link>
+            </div>
+          ) : filteredClaims.length === 0 ? (
+            <div className="sq-state">
+              Tidak ada klaim yang cocok dengan filter status atau kata kunci yang dipilih.
+            </div>
+          ) : (
             <div className="sq-report-grid">
-              {claims.map((c) => {
+              {filteredClaims.map((c) => {
                 const status = claimStatus(c.status)
                 return (
                   <article className="sq-report-card found" key={c.id}>
@@ -173,13 +227,6 @@ export default function MyClaimsPage({ user, onLogout }) {
                   </article>
                 )
               })}
-            </div>
-          ) : (
-            <div className="sq-state sq-state-empty">
-              <span>Anda belum pernah mengajukan klaim. Temukan barang Anda di daftar barang temuan.</span>
-              <Link to="/app" className="sq-btn sq-btn-lime">
-                Lihat Barang Temuan
-              </Link>
             </div>
           )}
         </section>

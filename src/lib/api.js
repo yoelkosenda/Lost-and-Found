@@ -47,12 +47,12 @@ async function rpc(fnName, params = {}) {
 export const api = {
   async me() {
     const token = getToken()
-    if (!token) throw new Error('Sesi Anda telah berakhir. Silakan masuk kembali.')
+    if (!token) return { user: null }
     try {
       return await rpc('api_me', { p_token: token })
-    } catch (err) {
+    } catch {
       setToken('')
-      throw err
+      return { user: null }
     }
   },
   async login(email, password) {
@@ -70,11 +70,19 @@ export const api = {
   },
   reports: () => rpc('api_reports', { p_token: getToken() }),
   myReports: () => rpc('api_my_reports', { p_token: getToken() }),
-  updateReportStatus: (id, status) =>
+  updateReportStatus: (id, status, reason = '') =>
     rpc('api_update_report_status', {
       p_token: getToken(),
       p_report_id: Number(id),
       p_status: status,
+      p_reason: reason || '',
+    }),
+  flagReport: (id, reason, note = '') =>
+    rpc('api_flag_report', {
+      p_token: getToken(),
+      p_report_id: Number(id),
+      p_reason: reason,
+      p_note: note || '',
     }),
   createReport: (data) =>
     rpc('api_create_report', {
@@ -100,6 +108,13 @@ export const api = {
       p_description: data.description,
       p_color: data.color,
       p_image_url: data.image_url || null,
+      p_latitude: data.latitude ?? null,
+      p_longitude: data.longitude ?? null,
+    }),
+  deleteReport: (id) =>
+    rpc('api_delete_report', {
+      p_token: getToken(),
+      p_report_id: Number(id),
     }),
   async uploadReportImage(file, userId) {
     const extensionByType = {

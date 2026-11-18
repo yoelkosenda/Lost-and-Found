@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../lib/api.js'
+import GoogleMapPin from '../maps/GoogleMapPin.jsx'
 import ReportImagePreview from './ReportImagePreview.jsx'
+import {
+  CAMPUS_LOCATIONS,
+  CAMPUS_LOCATION_NAMES,
+  CAMPUS_MAX_RADIUS_METERS,
+  distanceFromCampusCenter,
+  findNearestCampusLocation,
+  getCoordinatesForLocation,
+  getCoordinatesForReport,
+  isWithinCampusBounds,
+} from '../../lib/campusLocations.js'
 
 const CATEGORIES = ['Elektronik', 'Aksesori', 'Kunci', 'Dokumen/Buku', 'Perlengkapan', 'Pakaian', 'Lainnya']
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -8,12 +19,15 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 export default function ReportEditModal({ report, userId, onClose, onSaved }) {
   const dialogRef = useRef(null)
+  const initialCoords = getCoordinatesForReport(report)
   const [form, setForm] = useState({
     title: report.title || '',
     category: report.category || '',
-    location: report.location || '',
+    location: report.location || CAMPUS_LOCATION_NAMES[0],
     color: report.color || '',
     description: report.description || '',
+    latitude: initialCoords.lat,
+    longitude: initialCoords.lng,
   })
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
@@ -47,6 +61,10 @@ export default function ReportEditModal({ report, userId, onClose, onSaved }) {
     if (!saving) onClose()
   }
 
+  const locationOptions = CAMPUS_LOCATION_NAMES.includes(form.location)
+    ? CAMPUS_LOCATION_NAMES
+    : [form.location, ...CAMPUS_LOCATION_NAMES]
+
   async function submit(event) {
     event.preventDefault()
     const values = {
@@ -55,9 +73,15 @@ export default function ReportEditModal({ report, userId, onClose, onSaved }) {
       location: form.location.trim(),
       color: form.color.trim(),
       description: form.description.trim(),
+      latitude: form.latitude,
+      longitude: form.longitude,
     }
     if (!values.title || !values.category || !values.location || !values.color || !values.description) {
       setError('Nama, kategori, lokasi, warna, dan deskripsi wajib diisi.')
+      return
+    }
+    if (!isWithinCampusBounds(values.latitude, values.longitude)) {
+      setError(`Titik pin berada di luar batas area Kampus UNKLAB (maks. ${CAMPUS_MAX_RADIUS_METERS} m dari pusat kampus).`)
       return
     }
 
@@ -66,7 +90,9 @@ export default function ReportEditModal({ report, userId, onClose, onSaved }) {
     try {
       const imageUrl = imageFile
         ? await api.uploadReportImage(imageFile, userId)
-        : removeImage ? null : report.image_url
+        : removeImage
+          ? null
+          : report.image_url
       const result = await api.updateReport(report.id, { ...values, image_url: imageUrl })
       onSaved({ ...report, ...values, image_url: imageUrl, ...(result?.report || {}) })
     } catch (reason) {
@@ -102,14 +128,28 @@ export default function ReportEditModal({ report, userId, onClose, onSaved }) {
             <label className="sq-input-card">
               <span className="sq-input-label">Nama Barang</span>
               <div className="sq-input-underline">
-                <input value={form.title} maxLength={120} onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))} required />
+                <input
+                  value={form.title}
+                  maxLength={120}
+                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                  required
+                />
               </div>
             </label>
             <label className="sq-input-card">
               <span className="sq-input-label">Kategori</span>
               <div className="sq-input-underline">
-                <select className="sq-form-select" value={form.category} onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))} required>
-                  {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+                <select
+                  className="sq-form-select"
+                  value={form.category}
+                  onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
+                  required
+                >
+                  {CATEGORIES.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
                 </select>
               </div>
             </label>
@@ -117,23 +157,86 @@ export default function ReportEditModal({ report, userId, onClose, onSaved }) {
 
           <div className="sq-form-row">
             <label className="sq-input-card">
-              <span className="sq-input-label">Lokasi</span>
+              <span className="sq-input-label">Lokasi di Kampus</span>
               <div className="sq-input-underline">
-                <input value={form.location} maxLength={120} onChange={(event) => setForm((prev) => ({ ...prev, location: event.target.value }))} required />
+                <select
+                  className="sq-form-select"
+                  value={form.location}
+                  onChange={(event) => {
+                    const nextLoc = event.target.value
+                    const coords = getCoordinatesForLocation(nextLoc)
+                    setForm((prev) => ({
+                      ...prev,
+                      location: nextLoc,
+                      latitude: coords.lat,
+                      longitude: coords.lng,
+                    }))
+                    setError('')
+                  }}
+                  required
+                >
+                  {locationOptions.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {CAMPUS_LOCATIONS[loc]?.label || loc}
+                    </option>
+                  ))}
+                </select>
               </div>
             </label>
             <label className="sq-input-card">
               <span className="sq-input-label">Warna Barang</span>
               <div className="sq-input-underline">
-                <input value={form.color} maxLength={100} onChange={(event) => setForm((prev) => ({ ...prev, color: event.target.value }))} required />
+                <input
+                  value={form.color}
+                  maxLength={100}
+                  onChange={(event) => setForm((prev) => ({ ...prev, color: event.target.value }))}
+                  required
+                />
               </div>
             </label>
+          </div>
+
+          <div className="sq-input-card">
+            <span className="sq-input-label">Titik Pin di Peta Kampus</span>
+            <GoogleMapPin
+              lat={form.latitude}
+              lng={form.longitude}
+              title={form.title || report.title}
+              subtitle={form.location}
+              type={report.type}
+              height={200}
+              interactive
+              onSelect={({ lat, lng }) => {
+                if (!isWithinCampusBounds(lat, lng)) {
+                  const dist = Math.round(distanceFromCampusCenter(lat, lng))
+                  setError(
+                    `Pin di luar batas kampus (${dist} m dari pusat UNKLAB, maks. ${CAMPUS_MAX_RADIUS_METERS} m).`,
+                  )
+                  return
+                }
+                const nearestLocation = findNearestCampusLocation(lat, lng)
+                setForm((prev) => ({
+                  ...prev,
+                  location: nearestLocation,
+                  latitude: lat,
+                  longitude: lng,
+                }))
+                setError('')
+              }}
+            />
+            <small className="sq-field-hint">Klik peta untuk menyesuaikan titik lokasi di area kampus.</small>
           </div>
 
           <label className="sq-input-card">
             <span className="sq-input-label">Deskripsi Detail</span>
             <div className="sq-input-underline">
-              <textarea value={form.description} rows={4} maxLength={1000} onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))} required />
+              <textarea
+                value={form.description}
+                rows={4}
+                maxLength={1000}
+                onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+                required
+              />
             </div>
           </label>
 
@@ -148,7 +251,11 @@ export default function ReportEditModal({ report, userId, onClose, onSaved }) {
                   const file = event.target.files?.[0] || null
                   if (file && (!IMAGE_TYPES.includes(file.type) || file.size > MAX_IMAGE_SIZE)) {
                     setImageFile(null)
-                    setError(file.size > MAX_IMAGE_SIZE ? 'Ukuran foto maksimal 5 MB.' : 'Foto harus berformat JPG, PNG, atau WebP.')
+                    setError(
+                      file.size > MAX_IMAGE_SIZE
+                        ? 'Ukuran foto maksimal 5 MB.'
+                        : 'Foto harus berformat JPG, PNG, atau WebP.',
+                    )
                     event.target.value = ''
                     return
                   }
@@ -158,24 +265,42 @@ export default function ReportEditModal({ report, userId, onClose, onSaved }) {
                 }}
               />
             </div>
-            <small className="sq-field-hint">Unggah foto baru untuk mengganti foto saat ini (maksimal 5 MB).</small>
+            <small className="sq-field-hint">
+              Unggah foto baru untuk mengganti foto saat ini (maksimal 5 MB).
+            </small>
             {report.image_url && !imageFile && (
               <div className="sq-edit-image-actions">
-                <button type="button" className="sq-btn sq-btn-outline" onClick={() => setPreviewOpen(true)}>
+                <button
+                  type="button"
+                  className="sq-btn sq-btn-outline"
+                  onClick={() => setPreviewOpen(true)}
+                >
                   Lihat Foto Saat Ini
                 </button>
                 <label className="sq-remove-image">
-                  <input type="checkbox" checked={removeImage} onChange={(event) => setRemoveImage(event.target.checked)} />
+                  <input
+                    type="checkbox"
+                    checked={removeImage}
+                    onChange={(event) => setRemoveImage(event.target.checked)}
+                  />
                   Hapus foto saat ini
                 </label>
               </div>
             )}
             {imagePreview && (
               <div className="sq-edit-image-actions">
-                <button type="button" className="sq-btn sq-btn-outline" onClick={() => setPreviewOpen(true)}>
+                <button
+                  type="button"
+                  className="sq-btn sq-btn-outline"
+                  onClick={() => setPreviewOpen(true)}
+                >
                   Lihat Foto Baru
                 </button>
-                <button type="button" className="sq-btn sq-btn-outline" onClick={() => setImageFile(null)}>
+                <button
+                  type="button"
+                  className="sq-btn sq-btn-outline"
+                  onClick={() => setImageFile(null)}
+                >
                   Batalkan Foto Baru
                 </button>
               </div>
@@ -183,7 +308,9 @@ export default function ReportEditModal({ report, userId, onClose, onSaved }) {
           </div>
 
           <div className="sq-claim-actions">
-            <button type="button" className="sq-btn sq-btn-outline" onClick={close} disabled={saving}>Batal</button>
+            <button type="button" className="sq-btn sq-btn-outline" onClick={close} disabled={saving}>
+              Batal
+            </button>
             <button type="submit" className="sq-btn sq-btn-lime" disabled={saving} aria-busy={saving}>
               {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
             </button>

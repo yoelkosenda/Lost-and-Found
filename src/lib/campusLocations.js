@@ -1,4 +1,5 @@
 export const CAMPUS_CENTER = { lat: 1.4175, lng: 124.9840 }
+export const CAMPUS_MAX_RADIUS_METERS = 600
 
 export const CAMPUS_LOCATIONS = {
   GK1: { lat: 1.4178, lng: 124.9838, label: 'Gedung Kuliah 1 (GK1)' },
@@ -38,6 +39,23 @@ export function getCoordinatesForReport(report) {
     return { lat: report.latitude, lng: report.longitude }
   }
   return getCoordinatesForLocation(report?.location)
+}
+
+export function distanceFromCampusCenter(lat, lng) {
+  if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) {
+    return Infinity
+  }
+  const toRad = (deg) => (deg * Math.PI) / 180
+  const dLat = toRad(lat - CAMPUS_CENTER.lat)
+  const dLng = toRad(lng - CAMPUS_CENTER.lng)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(CAMPUS_CENTER.lat)) * Math.cos(toRad(lat)) * Math.sin(dLng / 2) ** 2
+  return 6371000 * 2 * Math.asin(Math.sqrt(a))
+}
+
+export function isWithinCampusBounds(lat, lng) {
+  return distanceFromCampusCenter(lat, lng) <= CAMPUS_MAX_RADIUS_METERS
 }
 
 export function findNearestCampusLocation(lat, lng) {

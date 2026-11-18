@@ -1,8 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api.js'
-import { Link, navigate } from '../router.jsx'
+import { showToast } from '../lib/toast.js'
+import { Link } from '../router.jsx'
+import AppNavbar from '../components/layout/AppNavbar.jsx'
 import StatusHistory from '../components/reports/StatusHistory.jsx'
 import ReportEditModal from '../components/reports/ReportEditModal.jsx'
+
+const CLOSE_REASON_OPTIONS = [
+  'Barang sudah ditemukan sendiri',
+  'Salah membuat laporan / laporan ganda',
+  'Sudah diserahkan ke Pos Keamanan UNKLAB',
+  'Masa pencarian semester berakhir',
+  'Lainnya',
+]
 
 export default function MyReportsPage({ user, onLogout }) {
   const [reports, setReports] = useState([])
@@ -14,7 +24,10 @@ export default function MyReportsPage({ user, onLogout }) {
   const [updatingId, setUpdatingId] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [openHistory, setOpenHistory] = useState({})
+  const [historyRefresh, setHistoryRefresh] = useState(0)
   const [editingReport, setEditingReport] = useState(null)
+  const [closingReport, setClosingReport] = useState(null)
+  const [deletingReport, setDeletingReport] = useState(null)
 
   const toggleHistory = (reportId) => {
     setOpenHistory((prev) => ({ ...prev, [reportId]: !prev[reportId] }))
@@ -23,18 +36,23 @@ export default function MyReportsPage({ user, onLogout }) {
   const loadReports = () => {
     setLoading(true)
     setError('')
-    api.myReports()
+    api
+      .myReports()
       .then((data) => {
         const rows = data?.reports ?? []
         setReports(rows)
-        Promise.all(rows.filter((r) => r.type === 'Found').map(async (r) => {
-          try {
-            const result = await api.reportClaims(r.id)
-            return [r.id, result?.claims ?? []]
-          } catch {
-            return [r.id, []]
-          }
-        })).then((entries) => setIncomingClaims(Object.fromEntries(entries)))
+        Promise.all(
+          rows
+            .filter((r) => r.type === 'Found')
+            .map(async (r) => {
+              try {
+                const result = await api.reportClaims(r.id)
+                return [r.id, result?.claims ?? []]
+              } catch {
+                return [r.id, []]
+              }
+            }),
+        ).then((entries) => setIncomingClaims(Object.fromEntries(entries)))
       })
       .catch((err) => {
         setError(err.message || 'Gagal memuat laporan Anda.')
@@ -48,26 +66,39 @@ export default function MyReportsPage({ user, onLogout }) {
     loadReports()
   }, [])
 
-  const handleUpdateStatus = async (id, title, newStatus) => {
-    const confirmed = window.confirm(
-      `Apakah Anda yakin ingin mengubah status laporan "${title}" menjadi "${newStatus}"?`
-    )
-    if (!confirmed) return
-
+  const applyStatusUpdate = async (id, newStatus, reason = '') => {
     setUpdatingId(id)
     setFeedback(null)
     try {
-      const result = await api.updateReportStatus(id, newStatus)
+      const result = await api.updateReportStatus(id, newStatus, reason)
       const updated = result?.report
       setReports((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: updated?.status || newStatus } : r))
+        prev.map((r) => (r.id === id ? { ...r, status: updated?.status || newStatus } : r)),
       )
-      setFeedback({ type: 'success', message: `Status laporan berhasil diubah menjadi "${newStatus}".` })
+      setHistoryRefresh((v) => v + 1)
+      const msg = reason
+        ? `Status diubah menjadi "${newStatus}" dan alasan tercatat di riwayat.`
+        : `Status laporan berhasil diubah menjadi "${newStatus}".`
+      setFeedback({ type: 'success', message: msg })
+      showToast(msg, 'success')
     } catch (err) {
-      setFeedback({ type: 'error', message: err.message || 'Gagal memperbarui status laporan.' })
+      const errMsg = err.message || 'Gagal memperbarui status laporan.'
+      setFeedback({ type: 'error', message: errMsg })
+      showToast(errMsg, 'error')
     } finally {
       setUpdatingId(null)
     }
+  }
+
+  const handleQuickResolve = async (r) => {
+    const targetStatus = r.type === 'Lost' ? 'Sudah ditemukan' : 'Sudah dikembalikan'
+    await applyStatusUpdate(
+      r.id,
+      targetStatus,
+      r.type === 'Lost'
+        ? 'Pemilik mengonfirmasi barang telah ditemukan kembali'
+        : 'Penemu mengonfirmasi barang telah diserahkan kepada pemilik sah',
+    )
   }
 
   // Filtered reports
@@ -84,67 +115,21 @@ export default function MyReportsPage({ user, onLogout }) {
   // Statistics
   const totalCount = reports.length
   const completedCount = reports.filter(
-    (r) => r.status === 'Sudah ditemukan' || r.status === 'Sudah dikembalikan'
+    (r) => r.status === 'Sudah ditemukan' || r.status === 'Sudah dikembalikan',
   ).length
   const activeCount = reports.filter(
     (r) =>
       r.status !== 'Sudah ditemukan' &&
       r.status !== 'Sudah dikembalikan' &&
-      r.status !== 'Dibatalkan / Ditutup'
+      r.status !== 'Dibatalkan / Ditutup',
   ).length
 
   const lostCount = reports.filter((r) => r.type === 'Lost').length
   const foundCount = reports.filter((r) => r.type === 'Found').length
 
-  const initials = user?.name
-    ? user.name
-        .split(' ')
-        .map((x) => x[0])
-        .join('')
-    : 'U'
-
   return (
     <div className="sq-page">
-      {/* NAVBAR */}
-      <header className="sq-navbar">
-        <div className="sq-navbar-inner">
-          <Link to="/" className="sq-brand" aria-label="Beranda Lost and Found UNKLAB">
-            <span className="sq-brand-box">
-              <img src="/figma/logo-cube.svg" alt="" width="38" height="43" />
-            </span>
-            <span className="sq-brand-text">
-              Lost and Found<span>.</span>
-              <small>UNKLAB</small>
-            </span>
-          </Link>
-
-          <nav className="sq-nav-links" aria-label="Navigasi Laporan Saya">
-            <Link to="/app" className="sq-nav-item">
-              Beranda
-            </Link>
-            <Link to="/app/my-reports" className="sq-nav-item active">
-              Laporan Saya
-            </Link>
-          </nav>
-
-          <div className="sq-account-bar">
-            <div className="sq-user-chip">
-              <span className="sq-avatar">{initials}</span>
-              <div className="sq-user-meta">
-                <b>{user?.name ?? 'Mahasiswa'}</b>
-                <small>Mahasiswa</small>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="sq-btn sq-btn-outline sq-logout-btn"
-              onClick={onLogout}
-            >
-              Keluar ↗
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppNavbar user={user} onLogout={onLogout} active="my-reports" />
 
       <main className="sq-container">
         {/* DASHBOARD HERO */}
@@ -168,14 +153,14 @@ export default function MyReportsPage({ user, onLogout }) {
               </h1>
               <p>
                 Kelola semua laporan barang hilang dan temuan yang Anda buat. Tandai barang jika sudah
-                kembali ke pemiliknya atau batalkan laporan yang sudah tidak aktif.
+                kembali ke pemiliknya atau tutup laporan beserta alasannya agar riwayat tetap jelas.
               </p>
               <div className="sq-hero-actions">
-                <Link to="/app" className="sq-btn sq-btn-outline">
-                  ← Kembali ke Dashboard
+                <Link to="/app/reports/new?type=Lost" className="sq-btn sq-btn-outline">
+                  + Lapor Barang Hilang
                 </Link>
-                <Link to="/app/reports/new" className="sq-btn sq-btn-lime">
-                  + Buat Laporan Baru
+                <Link to="/app/reports/new?type=Found" className="sq-btn sq-btn-lime">
+                  + Lapor Barang Temuan
                 </Link>
               </div>
             </div>
@@ -371,6 +356,10 @@ export default function MyReportsPage({ user, onLogout }) {
                 const isResolved = r.status === resolvedTargetStatus
                 const isClosed = r.status === 'Dibatalkan / Ditutup'
                 const isBusy = updatingId === r.id
+                const statusChoices =
+                  r.type === 'Lost'
+                    ? ['Masih dicari', 'Dalam verifikasi', 'Sudah ditemukan']
+                    : ['Menunggu pemilik', 'Sedang diklaim', 'Dalam verifikasi', 'Sudah dikembalikan']
 
                 return (
                   <article className={`sq-report-card ${r.type.toLowerCase()}`} key={r.id}>
@@ -383,10 +372,16 @@ export default function MyReportsPage({ user, onLogout }) {
 
                     {r.type === 'Found' && incomingClaims[r.id]?.length > 0 && (
                       <div className="sq-incoming-claims">
-                        <span className="sq-status-badge pending">{incomingClaims[r.id].length} klaim masuk</span>
+                        <span className="sq-status-badge pending">
+                          {incomingClaims[r.id].length} klaim masuk
+                        </span>
                         <div className="sq-incoming-claim-links">
                           {incomingClaims[r.id].map((claim) => (
-                            <Link key={claim.id} to={`/app/claims/${claim.id}`} className="sq-incoming-claim-link">
+                            <Link
+                              key={claim.id}
+                              to={`/app/claims/${claim.id}`}
+                              className="sq-incoming-claim-link"
+                            >
                               {claim.claimant_name} · Tinjau klaim
                             </Link>
                           ))}
@@ -417,14 +412,16 @@ export default function MyReportsPage({ user, onLogout }) {
                         </time>
                       </div>
 
-                      <h3>{r.title}</h3>
+                      <h3>
+                        <Link to={`/app/reports/${r.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                          {r.title}
+                        </Link>
+                      </h3>
 
                       <div className="sq-work-pill">
                         {r.category} · {r.location}
                       </div>
-                      <div className="sq-work-pill">
-                        Warna: {r.color || 'Belum dicantumkan'}
-                      </div>
+                      <div className="sq-work-pill">Warna: {r.color || 'Belum dicantumkan'}</div>
 
                       {r.description && <p className="sq-report-desc">{r.description}</p>}
 
@@ -432,6 +429,26 @@ export default function MyReportsPage({ user, onLogout }) {
                         <span className="sq-status-text">
                           Status: <b>{r.status}</b>
                         </span>
+                        <select
+                          className="sq-select-field sq-status-quick-select"
+                          aria-label={`Ubah status ${r.title}`}
+                          value={statusChoices.includes(r.status) ? r.status : ''}
+                          disabled={isBusy}
+                          onChange={(e) => {
+                            const nextStatus = e.target.value
+                            if (!nextStatus || nextStatus === r.status) return
+                            applyStatusUpdate(r.id, nextStatus, `Diperbarui oleh pelapor ke "${nextStatus}"`)
+                          }}
+                        >
+                          <option value="" disabled>
+                            Ubah status…
+                          </option>
+                          {statusChoices.map((st) => (
+                            <option key={st} value={st}>
+                              {st}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       {/* ACTION BUTTONS */}
@@ -455,19 +472,23 @@ export default function MyReportsPage({ user, onLogout }) {
                             cursor: isResolved || isBusy ? 'not-allowed' : 'pointer',
                           }}
                           disabled={isResolved || isBusy}
-                          onClick={() => handleUpdateStatus(r.id, r.title, resolvedTargetStatus)}
+                          onClick={() => handleQuickResolve(r)}
                           title={
                             isResolved
                               ? `Laporan sudah ditandai ${resolvedTargetStatus}`
                               : `Tandai laporan menjadi ${resolvedTargetStatus}`
                           }
                         >
-                          {isBusy ? 'Memproses…' : isResolved ? `✓ ${resolvedTargetStatus}` : resolvedTargetStatus}
+                          {isBusy
+                            ? 'Memproses…'
+                            : isResolved
+                              ? `✓ ${resolvedTargetStatus}`
+                              : resolvedTargetStatus}
                         </button>
 
                         <button
                           type="button"
-                          className="sq-btn sq-btn-outline"
+                          className="sq-btn sq-btn-outline sq-btn-danger"
                           style={{
                             padding: '9px 18px',
                             fontSize: '13px',
@@ -475,14 +496,23 @@ export default function MyReportsPage({ user, onLogout }) {
                             cursor: isClosed || isBusy ? 'not-allowed' : 'pointer',
                           }}
                           disabled={isClosed || isBusy}
-                          onClick={() => handleUpdateStatus(r.id, r.title, 'Dibatalkan / Ditutup')}
+                          onClick={() => setClosingReport(r)}
                           title={
                             isClosed
                               ? 'Laporan sudah dibatalkan atau ditutup'
-                              : 'Batalkan atau tutup laporan ini'
+                              : 'Tutup atau batalkan laporan ini dengan alasan'
                           }
                         >
-                          {isBusy ? 'Memproses…' : isClosed ? '✓ Dibatalkan / Ditutup' : 'Dibatalkan / Ditutup'}
+                          {isClosed ? '✓ Dibatalkan / Ditutup' : 'Tutup / Batalkan'}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="sq-btn sq-btn-outline"
+                          disabled={isBusy}
+                          onClick={() => setEditingReport(r)}
+                        >
+                          Edit Laporan
                         </button>
 
                         <button
@@ -493,13 +523,16 @@ export default function MyReportsPage({ user, onLogout }) {
                         >
                           {openHistory[r.id] ? 'Tutup Riwayat ▲' : 'Riwayat Status ▼'}
                         </button>
+
                         <button
                           type="button"
-                          className="sq-btn sq-btn-outline"
+                          className="sq-btn sq-btn-outline sq-btn-danger"
+                          style={{ padding: '9px 14px', fontSize: '13px' }}
                           disabled={isBusy}
-                          onClick={() => setEditingReport(r)}
+                          onClick={() => setDeletingReport(r)}
+                          title="Hapus laporan ini dari daftar"
                         >
-                          Edit Laporan
+                          Hapus
                         </button>
                       </div>
 
@@ -510,6 +543,7 @@ export default function MyReportsPage({ user, onLogout }) {
                             reportId={r.id}
                             currentStatus={r.status}
                             reportedAt={r.reported_at}
+                            refreshKey={historyRefresh}
                             compact
                           />
                         </div>
@@ -537,12 +571,11 @@ export default function MyReportsPage({ user, onLogout }) {
                 <span>Portal Mahasiswa Universitas Klabat</span>
               </div>
             </div>
-            <p className="sq-copyright">
-              © 2026 Lost and Found UNKLAB · Menemukan jalan pulang.
-            </p>
+            <p className="sq-copyright">© 2026 Lost and Found UNKLAB · Menemukan jalan pulang.</p>
           </div>
         </div>
       </footer>
+
       {editingReport && (
         <ReportEditModal
           report={editingReport}
@@ -551,14 +584,232 @@ export default function MyReportsPage({ user, onLogout }) {
           onSaved={(updatedReport) => {
             setReports((prev) =>
               prev.map((report) =>
-                String(report.id) === String(updatedReport.id) ? { ...report, ...updatedReport } : report
-              )
+                String(report.id) === String(updatedReport.id)
+                  ? { ...report, ...updatedReport }
+                  : report,
+              ),
             )
             setEditingReport(null)
             setFeedback({ type: 'success', message: 'Detail laporan berhasil diperbarui.' })
+            showToast('Detail laporan berhasil diperbarui.', 'success')
+          }}
+        />
+      )}
+
+      {closingReport && (
+        <CloseReportDialog
+          report={closingReport}
+          busy={updatingId === closingReport.id}
+          onClose={() => setClosingReport(null)}
+          onConfirm={async (reasonText) => {
+            const target = closingReport
+            setClosingReport(null)
+            setOpenHistory((prev) => ({ ...prev, [target.id]: true }))
+            await applyStatusUpdate(target.id, 'Dibatalkan / Ditutup', reasonText)
+          }}
+        />
+      )}
+
+      {deletingReport && (
+        <DeleteReportDialog
+          report={deletingReport}
+          busy={updatingId === deletingReport.id}
+          onClose={() => setDeletingReport(null)}
+          onConfirm={async () => {
+            const target = deletingReport
+            setUpdatingId(target.id)
+            try {
+              await api.deleteReport(target.id)
+              setReports((prev) => prev.filter((item) => item.id !== target.id))
+              setDeletingReport(null)
+              setFeedback({
+                type: 'success',
+                message: `Laporan "${target.title}" berhasil dihapus.`,
+              })
+              showToast(`Laporan "${target.title}" berhasil dihapus.`, 'success')
+            } catch (err) {
+              const errMsg = err.message || 'Gagal menghapus laporan.'
+              setFeedback({ type: 'error', message: errMsg })
+              showToast(errMsg, 'error')
+            } finally {
+              setUpdatingId(null)
+            }
           }}
         />
       )}
     </div>
+  )
+}
+
+function DeleteReportDialog({ report, busy, onClose, onConfirm }) {
+  const dialogRef = useRef(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (dialog && !dialog.open) dialog.showModal()
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevOverflow
+      if (dialog?.open) dialog.close()
+    }
+  }, [])
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="sq-claim-dialog"
+      aria-labelledby="delete-report-dialog-title"
+      onCancel={(e) => {
+        e.preventDefault()
+        if (!busy) onClose()
+      }}
+      onClick={(e) => {
+        if (e.target === dialogRef.current && !busy) onClose()
+      }}
+    >
+      <div className="sq-form-box sq-claim-box">
+        <div className="sq-claim-head">
+          <span className="sq-kicker-pill">HAPUS LAPORAN · #LF-{report.id}</span>
+          <h2 id="delete-report-dialog-title">Hapus Laporan Ini?</h2>
+          <p className="sq-claim-item">
+            {report.title} · {report.location}
+          </p>
+        </div>
+
+        <p className="sq-claim-privacy">
+          Laporan ini akan dihapus dari daftar publik dan halaman Laporan Saya. Jika laporan hanya sudah selesai atau dibatalkan, Anda juga dapat menggunakan tombol <b>Tutup / Batalkan</b> agar tetap tercatat di riwayat.
+        </p>
+
+        <div className="sq-claim-actions">
+          <button type="button" className="sq-btn sq-btn-outline" onClick={onClose} disabled={busy}>
+            Batal
+          </button>
+          <button
+            type="button"
+            className="sq-btn sq-btn-outline sq-btn-danger"
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            {busy ? 'Menghapus…' : 'Ya, Hapus Laporan'}
+          </button>
+        </div>
+      </div>
+    </dialog>
+  )
+}
+
+function CloseReportDialog({ report, busy, onClose, onConfirm }) {
+  const dialogRef = useRef(null)
+  const [preset, setPreset] = useState(CLOSE_REASON_OPTIONS[0])
+  const [customNote, setCustomNote] = useState('')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (dialog && !dialog.open) dialog.showModal()
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevOverflow
+      if (dialog?.open) dialog.close()
+    }
+  }, [])
+
+  const submit = (e) => {
+    e.preventDefault()
+    const finalReason =
+      preset === 'Lainnya'
+        ? customNote.trim()
+        : customNote.trim()
+          ? `${preset} (${customNote.trim()})`
+          : preset
+    if (!finalReason || finalReason.length < 3) {
+      setError('Tuliskan alasan penutupan minimal 3 karakter.')
+      return
+    }
+    onConfirm(finalReason)
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="sq-claim-dialog"
+      aria-labelledby="close-report-dialog-title"
+      onCancel={(e) => {
+        e.preventDefault()
+        if (!busy) onClose()
+      }}
+      onClick={(e) => {
+        if (e.target === dialogRef.current && !busy) onClose()
+      }}
+    >
+      <form className="sq-form-box sq-claim-box" onSubmit={submit} noValidate>
+        <div className="sq-claim-head">
+          <span className="sq-kicker-pill">TUTUP / BATALKAN LAPORAN · #LF-{report.id}</span>
+          <h2 id="close-report-dialog-title">Catat Alasan Penutupan</h2>
+          <p className="sq-claim-item">
+            {report.title} · {report.location}
+          </p>
+        </div>
+
+        <p className="sq-claim-privacy">
+          Alasan penutupan atau pembatalan akan dicatat pada <b>Riwayat Status (Timeline)</b> agar jejak laporan tetap transparan.
+        </p>
+
+        {error && (
+          <div className="sq-form-error" role="alert">
+            {error}
+          </div>
+        )}
+
+        <label className="sq-input-card">
+          <span className="sq-input-label">Alasan Penutupan</span>
+          <div className="sq-input-underline">
+            <select
+              className="sq-form-select"
+              value={preset}
+              onChange={(e) => {
+                setPreset(e.target.value)
+                setError('')
+              }}
+            >
+              {CLOSE_REASON_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
+        </label>
+
+        <label className="sq-input-card">
+          <span className="sq-input-label">
+            Catatan Tambahan {preset === 'Lainnya' ? '*' : '(opsional)'}
+          </span>
+          <div className="sq-input-underline">
+            <textarea
+              rows={3}
+              maxLength={240}
+              value={customNote}
+              onChange={(e) => {
+                setCustomNote(e.target.value)
+                setError('')
+              }}
+              placeholder="Contoh: Sudah ketemu di meja perpustakaan lantai 2."
+            />
+          </div>
+        </label>
+
+        <div className="sq-claim-actions">
+          <button type="button" className="sq-btn sq-btn-outline" onClick={onClose} disabled={busy}>
+            Kembali
+          </button>
+          <button type="submit" className="sq-btn sq-btn-lime" disabled={busy}>
+            {busy ? 'Menyimpan…' : 'Tutup Laporan & Catat Alasan'}
+          </button>
+        </div>
+      </form>
+    </dialog>
   )
 }

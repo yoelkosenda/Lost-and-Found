@@ -88,6 +88,28 @@ export default function CreateReportPage({ user, onLogout, search }) {
   const [serverError, setServerError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  function handleMapSelect({ lat, lng, location }) {
+    if (!isWithinCampusBounds(lat, lng)) {
+      const dist = Math.round(distanceFromCampusCenter(lat, lng))
+      setErrors((prev) => ({
+        ...prev,
+        map: `Pin di luar batas kampus (${dist} m dari pusat UNKLAB, batas maks. ${CAMPUS_MAX_RADIUS_METERS} m). Pilih titik di dalam area kampus.`,
+      }))
+      return
+    }
+    const matchedLocation = location || findNearestCampusLocation(lat, lng)
+    setForm((prev) => ({
+      ...prev,
+      location: matchedLocation,
+      latitude: lat,
+      longitude: lng,
+    }))
+    setErrors((prev) => ({ ...prev, location: undefined, map: undefined }))
+  }
+
+  const locationOptions =
+    form.location && !LOCATIONS.includes(form.location) ? [form.location, ...LOCATIONS] : LOCATIONS
+
   useEffect(() => {
     const nextType = getTypeFromSearch(search)
     setForm((prev) => (prev.type === nextType ? prev : { ...prev, type: nextType }))
@@ -319,9 +341,9 @@ export default function CreateReportPage({ user, onLogout, search }) {
                     {...a11y('location')}
                   >
                     <option value="" disabled>
-                      Pilih lokasi di kampus
+                      Pilih lokasi di kampus (atau klik langsung di peta)
                     </option>
-                    {LOCATIONS.map((l) => (
+                    {locationOptions.map((l) => (
                       <option key={l} value={l}>
                         {CAMPUS_LOCATIONS[l]?.label || l}
                       </option>
@@ -359,27 +381,10 @@ export default function CreateReportPage({ user, onLogout, search }) {
                 type={form.type}
                 height={240}
                 interactive
-                onSelect={({ lat, lng }) => {
-                  if (!isWithinCampusBounds(lat, lng)) {
-                    const dist = Math.round(distanceFromCampusCenter(lat, lng))
-                    setErrors((prev) => ({
-                      ...prev,
-                      map: `Pin di luar batas kampus (${dist} m dari pusat UNKLAB, batas maks. ${CAMPUS_MAX_RADIUS_METERS} m). Pilih titik di dalam area kampus.`,
-                    }))
-                    return
-                  }
-                  const nearestLocation = findNearestCampusLocation(lat, lng)
-                  setForm((prev) => ({
-                    ...prev,
-                    location: nearestLocation,
-                    latitude: lat,
-                    longitude: lng,
-                  }))
-                  setErrors((prev) => ({ ...prev, location: undefined, map: undefined }))
-                }}
+                onSelect={handleMapSelect}
               />
               <small className="sq-field-hint">
-                Pilih lokasi lalu klik peta untuk menggeser pin. Pin wajib berada di dalam batas area Kampus UNKLAB.
+                Klik titik gedung pada peta atau geser pin — kolom "Lokasi di Kampus" di atas akan otomatis terisi sesuai lokasi yang Anda pilih di peta.
               </small>
               {errors.map && (
                 <small className="sq-field-error" role="alert">

@@ -17,6 +17,7 @@ const DEFAULT_FALLBACK_MODELS = [
 
 const discoveredModelsCache = new Map()
 const aiMatchesCache = new Map()
+const reverseGeocodeCache = new Map()
 
 function fetchWithTimeout(url, options = {}, timeoutMs = 7500) {
   const controller = new AbortController()
@@ -512,6 +513,16 @@ export const api = {
     setToken(data.token)
     return { user: data.user }
   },
+  async register({ name, email, password, phone = '' }) {
+    const data = await rpc('api_register', {
+      p_name: name,
+      p_email: email,
+      p_password: password,
+      p_phone: phone || '',
+    })
+    setToken(data.token)
+    return { user: data.user }
+  },
   async logout() {
     const token = getToken()
     setToken('')
@@ -621,6 +632,26 @@ export const api = {
   geminiModel: getGeminiModel,
   saveGeminiModel: (model) => setGeminiModel(model),
   listGeminiModels: (customKey, options) => listGeminiModels(customKey, options),
+  /**
+   * Mencari nama tempat asli (OpenStreetMap Nominatim) untuk titik yang diklik di peta.
+   * Mengembalikan { name, lat, lng } atau null bila tidak ditemukan / gagal.
+   */
+  async reverseGeocode(lat, lng) {
+    const key = `${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`
+    if (reverseGeocodeCache.has(key)) return reverseGeocodeCache.get(key)
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&namedetails=1&accept-language=id&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`
+    try {
+      const response = await fetchWithTimeout(url, { headers: { Accept: 'application/json' } }, 5000)
+      if (!response.ok) return null
+      const data = await response.json()
+      const name = String(data?.name || data?.namedetails?.name || '').trim()
+      const result = name ? { name, lat: Number(data.lat), lng: Number(data.lon) } : null
+      reverseGeocodeCache.set(key, result)
+      return result
+    } catch {
+      return null
+    }
+  },
   async smartMatches(reportId, { onBaseResult, forceRefresh = false } = {}) {
     const baseData = await rpc('api_smart_matches', {
       p_token: getToken(),

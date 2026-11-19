@@ -16,6 +16,20 @@ app.post('/api/auth/login', async (req, res) => {
   const token = crypto.randomBytes(32).toString('hex'); sessions.set(token, { userId: user.id, expires: Date.now() + 28800000 })
   res.cookie('lf_session', token, { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 28800000 }).json({ user: getUser(user.id) })
 })
+app.post('/api/auth/register', async (req, res) => {
+  const { name = '', email = '', password = '' } = req.body ?? {}
+  const cleanName = String(name).trim()
+  const cleanEmail = String(email).trim().toLowerCase()
+  if (cleanName.length < 3 || cleanName.length > 80) return res.status(400).json({ error: 'Nama lengkap wajib diisi (3–80 karakter).' })
+  if (!cleanEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) return res.status(400).json({ error: 'Format email mahasiswa tidak valid.' })
+  if (!password || String(password).length < 6) return res.status(400).json({ error: 'Password minimal terdiri dari 6 karakter.' })
+  if (db.prepare('SELECT id FROM users WHERE lower(email) = ?').get(cleanEmail)) return res.status(409).json({ error: 'Email ini sudah terdaftar. Silakan masuk menggunakan akun Anda.' })
+  const passwordHash = await bcrypt.hash(String(password), 10)
+  const result = db.prepare("INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'student')").run(cleanName, cleanEmail, passwordHash)
+  const userId = Number(result.lastInsertRowid)
+  const token = crypto.randomBytes(32).toString('hex'); sessions.set(token, { userId, expires: Date.now() + 28800000 })
+  res.cookie('lf_session', token, { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 28800000 }).status(201).json({ user: getUser(userId) })
+})
 app.post('/api/auth/logout', (req, res) => { sessions.delete(req.cookies.lf_session); res.clearCookie('lf_session').status(204).end() })
 app.get('/api/auth/me', authenticate, (req, res) => res.json({ user: getUser(req.userId) }))
 app.get('/api/reports/public', (_req, res) => {

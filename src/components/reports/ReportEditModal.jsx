@@ -206,7 +206,7 @@ export default function ReportEditModal({ report, userId, onClose, onSaved }) {
               type={report.type}
               height={200}
               interactive
-              onSelect={({ lat, lng }) => {
+              onSelect={({ lat, lng, location }) => {
                 if (!isWithinCampusBounds(lat, lng)) {
                   const dist = Math.round(distanceFromCampusCenter(lat, lng))
                   setError(
@@ -214,7 +214,7 @@ export default function ReportEditModal({ report, userId, onClose, onSaved }) {
                   )
                   return
                 }
-                const nearestLocation = findNearestCampusLocation(lat, lng)
+                const nearestLocation = location || findNearestCampusLocation(lat, lng)
                 setForm((prev) => ({
                   ...prev,
                   location: nearestLocation,

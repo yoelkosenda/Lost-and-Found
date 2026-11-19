@@ -47,6 +47,13 @@ export default function App() {
     navigate('/app')
   }
 
+  async function register(formData) {
+    const { user } = await api.register(formData)
+    setUser(user)
+    showToast(`Akun mahasiswa berhasil dibuat. Selamat datang, ${user.name.split(' ')[0]}!`, 'success')
+    navigate('/app')
+  }
+
   async function logout() {
     await api.logout()
     setUser(null)
@@ -102,8 +109,16 @@ export default function App() {
     if (path === '/app/matching') {
       return user ? <MatchingPage user={user} onLogout={logout} /> : <Redirect to="/login" />
     }
-    if (path === '/login') {
-      return user ? <Redirect to="/app" /> : <LoginPage onLogin={login} />
+    if (path === '/login' || path === '/register') {
+      const initialMode =
+        path === '/register' || new URLSearchParams(search).get('mode') === 'register'
+          ? 'register'
+          : 'login'
+      return user ? (
+        <Redirect to="/app" />
+      ) : (
+        <LoginPage onLogin={login} onRegister={register} initialMode={initialMode} />
+      )
     }
     if (path === '/') {
       return <LandingPage user={user} />

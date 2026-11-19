@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { CAMPUS_CENTER } from '../../lib/campusLocations.js'
+import { CAMPUS_CENTER, CAMPUS_LOCATIONS, getLocationLabel } from '../../lib/campusLocations.js'
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
 
@@ -40,9 +40,26 @@ function createPinIcon(type) {
   const color = type === 'Lost' ? '#ffc470' : '#9eff00'
   return L.divIcon({
     className: 'sq-leaflet-pin',
-    html: `<span style="display:block;width:18px;height:18px;border-radius:50%;background:${color};border:3px solid #1a1a1a;box-shadow:0 0 0 2px ${color}66;"></span>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    html: `<span style="display:block;width:20px;height:20px;border-radius:50%;background:${color};border:3px solid #1a1a1a;box-shadow:0 0 0 3px ${color}66, 0 2px 8px rgba(0,0,0,0.6);"></span>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  })
+}
+
+function createCampusBuildingDotIcon(isSelected) {
+  if (isSelected) {
+    return L.divIcon({
+      className: 'sq-leaflet-building-dot',
+      html: `<span style="display:block;width:10px;height:10px;border-radius:50%;background:#9eff00;border:2px solid #1a1a1a;"></span>`,
+      iconSize: [10, 10],
+      iconAnchor: [5, 5],
+    })
+  }
+  return L.divIcon({
+    className: 'sq-leaflet-building-dot',
+    html: `<span style="display:block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.75);border:2px solid #1a1a1a;box-shadow:0 0 4px rgba(0,0,0,0.7);cursor:pointer;"></span>`,
+    iconSize: [10, 10],
+    iconAnchor: [5, 5],
   })
 }
 
@@ -101,8 +118,7 @@ export default function GoogleMapPin({
             fullscreenControl: true,
           })
         } else {
-          gMapRef.current.setCenter(center)
-          gMapRef.current.setZoom(zoom)
+          gMapRef.current.panTo(center)
         }
 
         for (const m of gMarkerRefs.current) m.setMap(null)
@@ -206,11 +222,37 @@ export default function GoogleMapPin({
       leafletMapRef.current = map
       leafletLayerRef.current = layerGroup
     } else {
-      leafletMapRef.current.setView([Number(lat), Number(lng)], zoom, { animate: true })
+      leafletMapRef.current.panTo([Number(lat), Number(lng)], { animate: true })
     }
 
     const layerGroup = leafletLayerRef.current
     layerGroup.clearLayers()
+
+    // Pada mode interaktif pemilih lokasi, tampilkan titik referensi gedung kampus UNKLAB
+    // agar pengguna dapat melihat posisi tiap gedung di peta dan mengekliknya langsung.
+    if (interactive && (!Array.isArray(markers) || markers.length === 0)) {
+      for (const [locKey, coords] of Object.entries(CAMPUS_LOCATIONS)) {
+        const isCurrentLoc = subtitle === locKey
+        const refMarker = L.marker([coords.lat, coords.lng], {
+          icon: createCampusBuildingDotIcon(isCurrentLoc),
+          interactive: true,
+        }).addTo(layerGroup)
+
+        refMarker.bindTooltip(coords.label, {
+          direction: 'top',
+          offset: [0, -6],
+        })
+
+        refMarker.on('click', (ev) => {
+          L.DomEvent.stopPropagation(ev)
+          onSelectRef.current?.({
+            lat: Number(coords.lat.toFixed(6)),
+            lng: Number(coords.lng.toFixed(6)),
+            location: locKey,
+          })
+        })
+      }
+    }
 
     const list =
       Array.isArray(markers) && markers.length > 0
@@ -221,10 +263,20 @@ export default function GoogleMapPin({
       const marker = L.marker([Number(item.lat), Number(item.lng)], {
         icon: createPinIcon(item.type),
         draggable: interactive,
+        zIndexOffset: 1000,
       }).addTo(layerGroup)
 
-      if (item.title && !interactive) {
-        marker.bindTooltip(`${item.title}${item.subtitle ? ` · ${item.subtitle}` : ''}`, {
+      if (interactive && item.id === 'pin') {
+        const activeLabel = item.subtitle
+          ? `📍 ${getLocationLabel(item.subtitle)}`
+          : 'Klik titik di peta untuk memilih lokasi'
+        marker.bindTooltip(activeLabel, {
+          permanent: Boolean(item.subtitle),
+          direction: 'top',
+          offset: [0, -12],
+        })
+      } else if (item.title && !interactive) {
+        marker.bindTooltip(`${item.title}${item.subtitle ? ` · ${getLocationLabel(item.subtitle)}` : ''}`, {
           direction: 'top',
         })
       }
@@ -278,8 +330,13 @@ export default function GoogleMapPin({
       </div>
       <div className="sq-map-footer">
         <span className="sq-map-coords">
+          {interactive && subtitle ? (
+            <>
+              Lokasi terpilih: <strong style={{ color: 'var(--green-50)' }}>{getLocationLabel(subtitle)}</strong> ·{' '}
+            </>
+          ) : null}
           Koordinat: <code>{formattedCoords}</code>
-          {interactive ? ' · Klik peta atau geser pin untuk menandai lokasi' : ''}
+          {interactive ? ' · Klik gedung/titik peta atau geser pin' : ''}
         </span>
         <a
           href={mapsExternalUrl}

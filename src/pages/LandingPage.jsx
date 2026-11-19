@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import { Link } from '../router.jsx'
+import BrandLogo from '../components/layout/BrandLogo.jsx'
 
 const services = [
   {
@@ -176,15 +177,7 @@ export default function LandingPage({ user }) {
     <div className="sq-page">
       <header className="sq-navbar">
         <div className="sq-navbar-inner">
-          <Link to="/" className="sq-brand" aria-label="Beranda Lost and Found UNKLAB">
-            <span className="sq-brand-box">
-              <img src="/figma/logo-cube.svg" alt="" width="38" height="43" />
-            </span>
-            <span className="sq-brand-text">
-              Lost and Found<span>.</span>
-              <small>UNKLAB</small>
-            </span>
-          </Link>
+          <BrandLogo to="/" ariaLabel="Beranda Lost and Found UNKLAB" />
 
           <nav className="sq-nav-links" aria-label="Navigasi Utama">
             <a href="#beranda" className="sq-nav-item active">Beranda</a>
@@ -517,15 +510,7 @@ export default function LandingPage({ user }) {
       <footer className="sq-footer">
         <div className="sq-footer-inner">
           <div className="sq-footer-top">
-            <Link to="/" className="sq-brand">
-              <span className="sq-brand-box">
-                <img src="/figma/logo-cube.svg" alt="" width="38" height="43" />
-              </span>
-              <span className="sq-brand-text">
-                Lost and Found<span>.</span>
-                <small>UNKLAB</small>
-              </span>
-            </Link>
+            <BrandLogo to="/" ariaLabel="Beranda Lost and Found UNKLAB" />
 
             <nav className="sq-footer-nav" aria-label="Navigasi Footer">
               <a href="#beranda">Beranda</a>

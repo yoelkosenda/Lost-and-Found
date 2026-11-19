@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from '../router.jsx'
+import BrandLogo from '../components/layout/BrandLogo.jsx'
 
 export default function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('student@unklab.ac.id')
@@ -26,15 +27,7 @@ export default function LoginPage({ onLogin }) {
     <div className="sq-page">
       <header className="sq-navbar">
         <div className="sq-navbar-inner">
-          <Link to="/" className="sq-brand" aria-label="Beranda Lost and Found UNKLAB">
-            <span className="sq-brand-box">
-              <img src="/figma/logo-cube.svg" alt="" width="38" height="43" />
-            </span>
-            <span className="sq-brand-text">
-              Lost and Found<span>.</span>
-              <small>UNKLAB</small>
-            </span>
-          </Link>
+          <BrandLogo to="/" ariaLabel="Beranda Lost and Found UNKLAB" />
 
           <nav className="sq-nav-links" aria-label="Navigasi Halaman Masuk">
             <Link to="/" className="sq-nav-item">← Kembali ke Beranda</Link>

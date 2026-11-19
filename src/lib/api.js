@@ -2,7 +2,35 @@ import { supabase } from './supabase.js'
 
 const SESSION_KEY = 'lf_session_token'
 const GEMINI_KEY_STORAGE = 'lf_gemini_api_key'
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash']
+const GEMINI_MODEL_STORAGE = 'lf_gemini_model'
+const GEMINI_LAST_WORKING_MODEL = 'lf_gemini_working_model'
+const DEFAULT_FALLBACK_MODELS = [
+  'gemini-3.8-flash',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-flash-latest',
+  'gemini-3.5-flash',
+  'gemini-3.0-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+]
+
+const discoveredModelsCache = new Map()
+const aiMatchesCache = new Map()
+
+function fetchWithTimeout(url, options = {}, timeoutMs = 7500) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer))
+}
+
+function normalizeGeminiModel(model) {
+  const cleaned = String(model || '')
+    .trim()
+    .replace(/^models\//i, '')
+  if (!cleaned || cleaned.toLowerCase() === 'auto') return ''
+  return cleaned
+}
 
 function getToken() {
   try {
@@ -51,13 +79,161 @@ function getGeminiKeySource() {
   return ''
 }
 
+function getGeminiModel() {
+  try {
+    const stored = normalizeGeminiModel(localStorage.getItem(GEMINI_MODEL_STORAGE))
+    if (stored) return stored
+  } catch {
+    // Ignore storage errors
+  }
+  return normalizeGeminiModel(import.meta.env.VITE_GEMINI_MODEL)
+}
+
+function setGeminiModel(model) {
+  try {
+    const normalized = normalizeGeminiModel(model)
+    if (normalized) localStorage.setItem(GEMINI_MODEL_STORAGE, normalized)
+    else localStorage.removeItem(GEMINI_MODEL_STORAGE)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function scoreModelForAutoOrder(modelId) {
+  const id = modelId.toLowerCase()
+  // Exclude specialized non-text endpoints from auto-selection (still usable if manually chosen)
+  if (
+    /(tts|image|imagen|veo|embedding|aqa|robotics|computer-use|audio|whisper|learnlm|thinking)/i.test(
+      id,
+    )
+  ) {
+    return -1000
+  }
+  let score = 0
+  if (id.startsWith('gemini-')) score += 500
+  else if (id.startsWith('gemma-')) score += 200
+
+  // Prioritaskan varian Flash di mode otomatis karena jauh lebih cepat (1-2 detik) dan kuota gratisnya besar
+  if (id.includes('flash') && !id.includes('lite')) score += 180
+  else if (id.includes('flash-lite')) score += 160
+  else if (id.includes('pro')) score -= 80
+
+  const versionMatch = id.match(/gemini-(\d+(?:\.\d+)?)/)
+  if (versionMatch) {
+    score += parseFloat(versionMatch[1]) * 40
+  } else if (id.includes('latest')) {
+    score += 110
+  }
+
+  // Penalti untuk model experimental/preview atau snapshot tanggal di mode otomatis agar tidak lambat/429
+  if (id.includes('exp') || id.includes('preview')) score -= 90
+  if (/-\d{2}-\d{2}|-\d{3,4}$/.test(id)) score -= 35
+  return score
+}
+
+async function listGeminiModels(customApiKey, { forceRefresh = false } = {}) {
+  const apiKey = (customApiKey || getGeminiKey() || '').trim()
+  if (!apiKey) return []
+
+  const cached = discoveredModelsCache.get(apiKey)
+  if (!forceRefresh && cached && Date.now() - cached.timestamp < 300000) {
+    return cached.models
+  }
+
+  const response = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models?pageSize=100&key=${encodeURIComponent(apiKey)}`,
+    {},
+    5000,
+  )
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}))
+    const msg = errData?.error?.message || `HTTP ${response.status}`
+    throw new Error(msg)
+  }
+
+  const data = await response.json()
+  const rawModels = Array.isArray(data?.models) ? data.models : []
+  const models = rawModels
+    .filter(
+      (m) =>
+        m?.name &&
+        (!Array.isArray(m.supportedGenerationMethods) ||
+          m.supportedGenerationMethods.includes('generateContent')),
+    )
+    .map((m) => {
+      const id = normalizeGeminiModel(m.name)
+      return {
+        id,
+        displayName: m.displayName || id,
+        description: m.description || '',
+        autoScore: scoreModelForAutoOrder(id),
+      }
+    })
+    .filter((m) => Boolean(m.id))
+    .sort((a, b) => b.autoScore - a.autoScore || a.id.localeCompare(b.id))
+
+  discoveredModelsCache.set(apiKey, { timestamp: Date.now(), models })
+  return models
+}
+
+function parseEvaluationsJson(rawText) {
+  const text = String(rawText || '').trim()
+  if (!text) return []
+  try {
+    const direct = JSON.parse(text)
+    if (Array.isArray(direct?.evaluations)) return direct.evaluations
+    if (Array.isArray(direct)) return direct
+  } catch {
+    // Try stripping markdown fences or extracting JSON object
+  }
+  const fenced = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+  try {
+    const parsed = JSON.parse(fenced)
+    if (Array.isArray(parsed?.evaluations)) return parsed.evaluations
+    if (Array.isArray(parsed)) return parsed
+  } catch {
+    // Try finding first {...} block
+  }
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start !== -1 && end > start) {
+    const parsed = JSON.parse(text.slice(start, end + 1))
+    if (Array.isArray(parsed?.evaluations)) return parsed.evaluations
+  }
+  return []
+}
+
+function isInvalidApiKeyError(status, errData, msg) {
+  const reason = errData?.error?.details?.[0]?.reason || errData?.error?.status || ''
+  if (reason === 'API_KEY_INVALID') return true
+  if (/API key not valid|API_KEY_INVALID|invalid api key/i.test(msg)) return true
+  if (status === 403 && /api key|permission_denied|unregistered callers/i.test(msg)) return true
+  return false
+}
+
 function classifyScoreLevel(score) {
   if (score >= 65) return 'Tinggi'
   if (score >= 40) return 'Sedang'
   return 'Rendah'
 }
 
-async function runGeminiSmartMatching(sourceReport, candidates, apiKey) {
+async function runGeminiSmartMatching(
+  sourceReport,
+  candidates,
+  apiKey,
+  preferredModel = '',
+  { forceRefresh = false } = {},
+) {
+  const chosenModel = normalizeGeminiModel(preferredModel || getGeminiModel())
+  // Batasi kandidat yang dikirim ke Gemini pada 10 kandidat paling potensial dengan deskripsi ringkas agar respons 1-2 detik
+  const topCandidates = candidates.slice(0, 10)
+  const cacheKey = `${sourceReport.id}:${chosenModel || 'auto'}:${topCandidates.map((c) => `${c.id}-${c.score}`).join(',')}`
+  const cachedResult = aiMatchesCache.get(cacheKey)
+  if (!forceRefresh && cachedResult && Date.now() - cachedResult.timestamp < 120000) {
+    return cachedResult.value
+  }
+
+  const trimDesc = (text) => String(text || '').trim().slice(0, 180)
   const promptPayload = {
     source_report: {
       id: sourceReport.id,
@@ -66,34 +242,27 @@ async function runGeminiSmartMatching(sourceReport, candidates, apiKey) {
       category: sourceReport.category,
       color: sourceReport.color || '',
       location: sourceReport.location,
-      description: sourceReport.description || '',
+      description: trimDesc(sourceReport.description),
     },
-    candidates: candidates.map((c) => ({
+    candidates: topCandidates.map((c) => ({
       id: c.id,
       type: c.type,
       title: c.title,
       category: c.category,
       color: c.color || '',
       location: c.location,
-      description: c.description || '',
+      description: trimDesc(c.description),
       heuristic_score: c.score || 0,
-      heuristic_reasons: c.reasons || [],
     })),
   }
 
   const systemInstruction = [
-    'Anda adalah sistem AI Smart Matching untuk portal Lost & Found mahasiswa Universitas Klabat (UNKLAB).',
-    'Tugas Anda: bandingkan laporan sumber (source_report) dengan setiap kandidat laporan pasangan (candidates).',
-    'Analisis kemiripan semantik (sinonim barang, merek/jenis, ciri fisik, warna, kategori, dan kedekatan area kampus UNKLAB).',
-    'Berikan skor relevansi 0-100 untuk setiap kandidat:',
-    '- 65-100 (Tinggi): Kemungkinan besar barang yang sama (ciri fisik/jenis barang, warna, dan lokasi/konteks sangat mendukung).',
-    '- 40-64 (Sedang): Beberapa ciri penting cocok (mis. jenis barang serupa atau warna/area kampus berkaitan).',
-    '- 15-39 (Rendah): Hanya sedikit kemiripan umum.',
-    '- 0-14: Tidak relevan.',
-    'Tuliskan alasan singkat (1-2 poin per kandidat) dalam Bahasa Indonesia yang jelas dan mudah dipahami mahasiswa.',
+    'Anda adalah AI Smart Matching Lost & Found UNKLAB.',
+    'Bandingkan source_report dengan setiap candidates (kemiripan barang, warna, ciri fisik, lokasi kampus).',
+    'Berikan ai_score (0-100: >=65 Tinggi, 40-64 Sedang, 15-39 Rendah) dan ai_reason singkat (maks 1 kalimat Bahasa Indonesia) per kandidat.',
   ].join(' ')
 
-  const requestBody = {
+  const structuredRequestBody = {
     systemInstruction: {
       parts: [{ text: systemInstruction }],
     },
@@ -102,13 +271,14 @@ async function runGeminiSmartMatching(sourceReport, candidates, apiKey) {
         role: 'user',
         parts: [
           {
-            text: `Evaluasi daftar kandidat berikut dan kembalikan JSON sesuai skema:\n${JSON.stringify(promptPayload)}`,
+            text: JSON.stringify(promptPayload),
           },
         ],
       },
     ],
     generationConfig: {
       temperature: 0.1,
+      maxOutputTokens: 900,
       responseMimeType: 'application/json',
       responseSchema: {
         type: 'OBJECT',
@@ -131,23 +301,106 @@ async function runGeminiSmartMatching(sourceReport, candidates, apiKey) {
     },
   }
 
+  const universalRequestBody = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: `${systemInstruction}\nKembalikan HANYA JSON: {"evaluations":[{"id":1,"ai_score":80,"ai_reason":"..."}]}\nData:\n${JSON.stringify(promptPayload)}`,
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 900,
+    },
+  }
+
+  const modelQueue = []
+  const seenModels = new Set()
+  const enqueueModel = (id) => {
+    const norm = normalizeGeminiModel(id)
+    if (!norm || seenModels.has(norm)) return
+    seenModels.add(norm)
+    modelQueue.push(norm)
+  }
+
+  // 1. Jika pengguna memilih model tertentu, utamakan model tersebut
+  if (chosenModel) enqueueModel(chosenModel)
+
+  // 2. Gunakan model yang terakhir terbukti berhasil agar tidak perlu mencoba model lain yang mati
+  try {
+    const lastWorking = normalizeGeminiModel(sessionStorage.getItem(GEMINI_LAST_WORKING_MODEL))
+    if (lastWorking) enqueueModel(lastWorking)
+  } catch {
+    // Ignore storage error
+  }
+
+  // 3. Gunakan daftar model default tercepat terlebih dahulu, baru ambil dari /v1beta/models jika belum ada di cache
+  const cachedDiscovered = discoveredModelsCache.get(apiKey)
+  if (cachedDiscovered?.models?.length) {
+    for (const m of cachedDiscovered.models.slice(0, 5)) {
+      if (m.autoScore > 0) enqueueModel(m.id)
+    }
+  } else {
+    // Jalankan penemuan model secara paralel di background untuk mengisi cache tanpa menahan panggilan pertama
+    listGeminiModels(apiKey).catch(() => null)
+  }
+
+  for (const fallback of DEFAULT_FALLBACK_MODELS) {
+    enqueueModel(fallback)
+  }
+
+  // Batasi maksimal 4 percobaan model agar tidak pernah menunggu puluhan model secara beruntun
+  const maxAttempts = chosenModel ? 3 : 4
   let lastError = null
-  for (const model of GEMINI_MODELS) {
+
+  for (let i = 0; i < Math.min(modelQueue.length, maxAttempts); i += 1) {
+    const model = modelQueue[i]
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`
+      let response = await fetchWithTimeout(
+        endpoint,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody),
+          body: JSON.stringify(structuredRequestBody),
         },
+        7500,
       )
+
+      if (response.status === 400) {
+        const errData = await response.json().catch(() => ({}))
+        const msg = errData?.error?.message || 'HTTP 400'
+        if (isInvalidApiKeyError(response.status, errData, msg)) {
+          throw new Error(`API Key Google Gemini tidak valid atau ditolak: ${msg}`)
+        }
+        response = await fetchWithTimeout(
+          endpoint,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(universalRequestBody),
+          },
+          7500,
+        )
+      }
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}))
         const msg = errData?.error?.message || `HTTP ${response.status}`
-        if (response.status === 400 || response.status === 403) {
+        if (isInvalidApiKeyError(response.status, errData, msg)) {
           throw new Error(`API Key Google Gemini tidak valid atau ditolak: ${msg}`)
+        }
+        const suggestedMatch = msg.match(/use\s+models\/([a-zA-Z0-9._-]+)/i)
+        if (suggestedMatch?.[1]) {
+          const suggested = normalizeGeminiModel(suggestedMatch[1])
+          if (suggested && !seenModels.has(suggested)) {
+            seenModels.add(suggested)
+            modelQueue.splice(i + 1, 0, suggested)
+          }
         }
         lastError = new Error(msg)
         continue
@@ -155,9 +408,14 @@ async function runGeminiSmartMatching(sourceReport, candidates, apiKey) {
 
       const result = await response.json()
       const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
-      const parsed = JSON.parse(rawText)
-      const evalList = Array.isArray(parsed?.evaluations) ? parsed.evaluations : []
+      const evalList = parseEvaluationsJson(rawText)
       const evalMap = new Map(evalList.map((item) => [Number(item.id), item]))
+
+      try {
+        sessionStorage.setItem(GEMINI_LAST_WORKING_MODEL, model)
+      } catch {
+        // Ignore
+      }
 
       const mergedMatches = candidates
         .map((c) => {
@@ -186,12 +444,18 @@ async function runGeminiSmartMatching(sourceReport, candidates, apiKey) {
         .sort((a, b) => b.score - a.score)
         .slice(0, 20)
 
-      return {
+      const returnVal = {
         matches: mergedMatches,
         model: `Google Gemini (${model})`,
+        model_id: model,
       }
+      aiMatchesCache.set(cacheKey, { timestamp: Date.now(), value: returnVal })
+      return returnVal
     } catch (err) {
-      lastError = err
+      lastError =
+        err?.name === 'AbortError'
+          ? new Error(`Model ${model} melebihi batas waktu respons (timeout).`)
+          : err
       if (/API Key Google Gemini tidak valid/i.test(err?.message || '')) {
         throw err
       }
@@ -354,12 +618,16 @@ export const api = {
   geminiKeySource: getGeminiKeySource,
   hasGeminiKey: () => Boolean(getGeminiKey()),
   saveGeminiKey: (key) => setGeminiKey(key),
-  async smartMatches(reportId) {
+  geminiModel: getGeminiModel,
+  saveGeminiModel: (model) => setGeminiModel(model),
+  listGeminiModels: (customKey, options) => listGeminiModels(customKey, options),
+  async smartMatches(reportId, { onBaseResult, forceRefresh = false } = {}) {
     const baseData = await rpc('api_smart_matches', {
       p_token: getToken(),
       p_report_id: Number(reportId),
     })
     const geminiKey = getGeminiKey()
+    const preferredModel = getGeminiModel()
     const candidates = Array.isArray(baseData?.candidates)
       ? baseData.candidates
       : Array.isArray(baseData?.matches)
@@ -370,25 +638,45 @@ export const api = {
       return {
         ...baseData,
         ai_active: Boolean(geminiKey),
+        ai_pending: false,
         ai_engine: geminiKey
-          ? 'Google Gemini (gemini-2.5-flash)'
+          ? `Google Gemini (${preferredModel || 'Otomatis / Semua Model'})`
           : 'Heuristik Geospasial & Kata Kunci (Supabase)',
       }
     }
 
+    // Kirim hasil awal dari database secara instan (< 0.2 detik) agar pengguna tidak menunggu layar kosong
+    if (typeof onBaseResult === 'function') {
+      onBaseResult({
+        ...baseData,
+        ai_active: false,
+        ai_pending: true,
+        ai_engine: `Menganalisis dengan Google Gemini (${preferredModel || 'Otomatis'})…`,
+      })
+    }
+
     try {
-      const aiResult = await runGeminiSmartMatching(baseData.report, candidates, geminiKey)
+      const aiResult = await runGeminiSmartMatching(
+        baseData.report,
+        candidates,
+        geminiKey,
+        preferredModel,
+        { forceRefresh },
+      )
       return {
         ...baseData,
         matches: aiResult.matches,
         ai_active: true,
+        ai_pending: false,
         ai_engine: aiResult.model,
+        ai_model_id: aiResult.model_id,
         generated_at: new Date().toISOString(),
       }
     } catch (aiErr) {
       return {
         ...baseData,
         ai_active: false,
+        ai_pending: false,
         ai_engine: 'Heuristik Geospasial & Kata Kunci (Fallback)',
         ai_error: aiErr.message || 'Gagal menghubungi Google Gemini API.',
       }

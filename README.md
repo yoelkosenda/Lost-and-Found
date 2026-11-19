@@ -21,10 +21,10 @@ Aplikasi ini dirancang dengan sistem desain **SquareUp Figma Dark Theme** dan te
    - Pintasan langsung `+ Lapor Barang Hilang` (`?type=Lost`) dan `+ Lapor Barang Temuan` (`?type=Found`).
    - Pemilihan lokasi gedung kampus UNKLAB yang tersinkronisasi dengan **Pin Peta Interaktif** serta **validasi batas radius kampus (600 m)**.
    - Unggah foto barang ke **Supabase Storage** (`JPG`, `PNG`, `WebP` maks. 5 MB) disertai modal **Pratinjau Laporan (Review Modal)** sebelum diterbitkan.
-5. **AI Smart Matching Laporan dengan Google Gemini Flash (`/app/matching`)**
-   - Menggunakan model gratis **Google Gemini (`gemini-2.5-flash` / `gemini-2.0-flash`)** dengan *Structured JSON Output* yang dipadukan bersama pencocokan geospasial & heuristik PostgreSQL.
+5. **AI Smart Matching Laporan dengan Google Gemini (`/app/matching`)**
+   - Mendukung **seluruh model Google Gemini tanpa batasan** (deteksi model otomatis langsung dari endpoint `/v1beta/models` Google AI Studio atau pemilihan model bebas seperti `gemini-3.8-flash`, `gemini-2.5-flash`, `gemini-2.5-pro`, dll.) yang dipadukan bersama pencocokan geospasial & heuristik PostgreSQL.
    - Menganalisis kemiripan semantik antara laporan pasangan (*Lost* ↔ *Found*) berdasarkan sinonim/merek barang, ciri fisik, warna, kategori, dan kedekatan titik koordinat kampus.
-   - Menampilkan tingkat relevansi (**Tinggi**, **Sedang**, **Rendah**) beserta alasan analisis AI berbahasa Indonesia, serta dialog konfigurasi API Key Gemini langsung di halaman `/app/matching`.
+   - Menampilkan tingkat relevansi (**Tinggi**, **Sedang**, **Rendah**) beserta alasan analisis AI berbahasa Indonesia, serta dialog konfigurasi API Key & pemilihan model Gemini langsung di halaman `/app/matching`.
 6. **Sistem Klaim 4-Tahap, Chat Internal 2-Arah & Opt-In Nomor Telepon (`/app/my-claims` & `/app/claims/:id`)**
    - Tahapan klaim terstruktur: **Diajukan** → **Verifikasi Penemu** → **Serah Terima** → **Sudah Dikembalikan**.
    - Penanganan multi-pengklaim otomatis pada barang yang sama.

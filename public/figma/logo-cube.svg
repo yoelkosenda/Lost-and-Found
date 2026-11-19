@@ -1,6 +1,103 @@
-<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="38.3099" height="43.0986" viewBox="0 0 38.3099 43.0986" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g id="Cub">
-<path id="Rectangle 107" d="M2.11055e-05 10.2616L19.155 21.5493L19.155 43.0986L2.06232e-05 32.1529L2.11055e-05 10.2616Z" fill="#1A1A1A"/>
-<path id="Vector 12 (Stroke)" d="M20.8451 21.5342V40.1862L36.6197 31.1721V12.2384L20.8451 21.5342ZM38.3099 32.1529L19.1549 43.0986V21.5493L0 10.2616L19.1549 0L38.3099 10.2616V32.1529ZM35.7336 10.7988L19.1549 1.91739L3.44815 10.3317L19.9872 20.078L35.7336 10.7988Z" fill-rule="evenodd" clip-rule="evenodd" fill="#1A1A1A"/>
-</g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" fill="none">
+  <!-- Ground target ring under pin tip -->
+  <path
+    d="M31 79.5 C21 81.2 15 84.5 15 88.5 C15 93.8 27.5 97 44 97 C60.5 97 73 93.8 73 88.5 C73 84.5 67 81.2 57 79.5"
+    stroke="#9EFF00"
+    stroke-width="4.5"
+    stroke-linecap="round"
+  />
+  <path
+    d="M33 81 C23.5 82.4 18 85.2 18 88.5 C18 92.6 29.6 95.2 44 95.2 C58.4 95.2 70 92.6 70 88.5 C70 85.2 64.5 82.4 55 81"
+    stroke="#1A1A1A"
+    stroke-width="3.2"
+    stroke-linecap="round"
+  />
+
+  <!-- Main Lime Location Pin Body -->
+  <path
+    d="M44 87 C30 69 13 52 13 34.5 C13 17.4 26.9 3.5 44 3.5 C61.1 3.5 75 17.4 75 34.5 C75 52 58 69 44 87 Z"
+    fill="#9EFF00"
+    stroke="#1A1A1A"
+    stroke-width="5.5"
+    stroke-linejoin="round"
+  />
+
+  <!-- White inner circle (Magnifying lens) -->
+  <circle
+    cx="44"
+    cy="34.5"
+    r="21"
+    fill="#FFFFFF"
+    stroke="#1A1A1A"
+    stroke-width="5"
+  />
+
+  <!-- Campus Building Silhouette inside lens -->
+  <g fill="#1A1A1A">
+    <!-- Flagpole & Flag -->
+    <rect x="43" y="15.5" width="2.2" height="7" rx="1" />
+    <path d="M45 15.5 C47.8 14.8 49.5 17.2 52.5 16.3 V20.2 C49.5 21 47.8 18.8 45 19.5 Z" />
+    <!-- Central Pediment / Roof -->
+    <path d="M33.5 28.5 L44 21 L54.5 28.5 Z" />
+    <!-- Central Tower Body -->
+    <rect x="35.5" y="28" width="17" height="16.5" rx="0.8" />
+    <!-- Left Wing -->
+    <rect x="25.5" y="33" width="10.5" height="11.5" rx="0.8" />
+    <rect x="24.5" y="32" width="11.5" height="2" rx="0.6" />
+    <!-- Right Wing -->
+    <rect x="52" y="33" width="10.5" height="11.5" rx="0.8" />
+    <rect x="52" y="32" width="11.5" height="2" rx="0.6" />
+  </g>
+  <!-- Campus Windows & Arched Door (White cutouts) -->
+  <g fill="#FFFFFF">
+    <!-- Central tower upper window -->
+    <rect x="42.5" y="30" width="3" height="3.2" rx="0.5" />
+    <!-- Central arched door -->
+    <path d="M41.3 44.6 V38.5 A2.7 2.7 0 0 1 46.7 38.5 V44.6 Z" />
+    <!-- Left wing windows -->
+    <rect x="27.8" y="35.8" width="2.4" height="3.5" rx="0.4" />
+    <rect x="31.8" y="35.8" width="2.4" height="3.5" rx="0.4" />
+    <!-- Right wing windows -->
+    <rect x="53.8" y="35.8" width="2.4" height="3.5" rx="0.4" />
+    <rect x="57.8" y="35.8" width="2.4" height="3.5" rx="0.4" />
+  </g>
+
+  <!-- Magnifying Glass Handle (Bottom Right) -->
+  <g transform="rotate(-45 69 60)">
+    <rect
+      x="63"
+      y="43"
+      width="12"
+      height="34"
+      rx="6"
+      fill="#1A1A1A"
+      stroke="#9EFF00"
+      stroke-width="2"
+    />
+    <line
+      x1="69"
+      y1="50"
+      x2="69"
+      y2="71"
+      stroke="#FFFFFF"
+      stroke-width="3"
+      stroke-linecap="round"
+    />
+  </g>
+
+  <!-- Lime Checkmark overlapping bottom-right of lens -->
+  <path
+    d="M44.5 47.5 L51.5 54 L64.5 41.5"
+    stroke="#1A1A1A"
+    stroke-width="11"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M44.5 47.5 L51.5 54 L64.5 41.5"
+    stroke="#9EFF00"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
 </svg>

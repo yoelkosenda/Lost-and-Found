@@ -27,6 +27,8 @@ export default function MatchingPage({ user, onLogout }) {
   const [configOpen, setConfigOpen] = useState(false)
   const [hasGeminiKey, setHasGeminiKey] = useState(() => api.hasGeminiKey())
   const [keySource, setKeySource] = useState(() => api.geminiKeySource())
+  const [geminiModel, setGeminiModel] = useState(() => api.geminiModel())
+  const activeReqRef = useRef(0)
 
   const loadReports = () => {
     setReportsError('')
@@ -46,18 +48,36 @@ export default function MatchingPage({ user, onLogout }) {
 
   useEffect(loadReports, [])
 
-  const runMatch = useCallback((id) => {
+  const runMatch = useCallback((id, forceRefresh = false) => {
     if (!id) return
+    const reqId = ++activeReqRef.current
     setMatching(true)
     setMatchError('')
     api
-      .smartMatches(id)
-      .then(setResult)
-      .catch((e) => {
-        setResult(null)
-        setMatchError(e.message)
+      .smartMatches(id, {
+        forceRefresh,
+        onBaseResult: (baseRes) => {
+          if (activeReqRef.current === reqId) {
+            setResult(baseRes)
+          }
+        },
       })
-      .finally(() => setMatching(false))
+      .then((finalRes) => {
+        if (activeReqRef.current === reqId) {
+          setResult(finalRes)
+        }
+      })
+      .catch((e) => {
+        if (activeReqRef.current === reqId) {
+          setResult(null)
+          setMatchError(e.message)
+        }
+      })
+      .finally(() => {
+        if (activeReqRef.current === reqId) {
+          setMatching(false)
+        }
+      })
   }, [])
 
   useEffect(() => {
@@ -99,7 +119,7 @@ export default function MatchingPage({ user, onLogout }) {
                 <span>laporan Anda dengan AI.</span>
               </h1>
               <p>
-                Pilih salah satu laporan Anda. Sistem memadukan <b>Google Gemini Flash AI</b> (analisis semantik deskripsi & ciri barang) dengan pencocokan geospasial gedung kampus UNKLAB.
+                Pilih salah satu laporan Anda. Sistem memadukan <b>Google Gemini AI</b> (mendukung seluruh model Gemini tanpa batasan untuk analisis semantik deskripsi & ciri barang) dengan pencocokan geospasial gedung kampus UNKLAB.
               </p>
               <div className="sq-hero-actions">
                 <button
@@ -108,8 +128,8 @@ export default function MatchingPage({ user, onLogout }) {
                   onClick={() => setConfigOpen(true)}
                 >
                   {hasGeminiKey
-                    ? '✨ Google Gemini AI Terhubung (Atur Key)'
-                    : '🔑 Hubungkan API Key Google Gemini Gratis'}
+                    ? `✨ Google Gemini AI Terhubung (${geminiModel || 'Model Otomatis'})`
+                    : '🔑 Hubungkan API Key & Model Google Gemini'}
                 </button>
               </div>
             </div>
@@ -149,7 +169,7 @@ export default function MatchingPage({ user, onLogout }) {
                   type="button"
                   className="sq-btn sq-btn-lime sq-toolbar-btn"
                   onClick={() => {
-                    runMatch(selectedId)
+                    runMatch(selectedId, true)
                     showToast(
                       hasGeminiKey
                         ? 'Google Gemini AI sedang menganalisis ulang kandidat laporan…'
@@ -177,7 +197,7 @@ export default function MatchingPage({ user, onLogout }) {
             ⓘ <b>Mesin Aktif:</b>{' '}
             {result?.ai_engine ||
               (hasGeminiKey
-                ? 'Google Gemini (gemini-2.5-flash)'
+                ? `Google Gemini (${geminiModel || 'Otomatis / Semua Model'})`
                 : 'Heuristik Geospasial & Kata Kunci (Supabase)')}
             . AI hanya merekomendasikan kandidat berdasarkan kemiripan ciri — tingkat relevansi bukan bukti kepemilikan dan tetap diverifikasi penemu melalui klaim.
           </p>
@@ -282,7 +302,11 @@ export default function MatchingPage({ user, onLogout }) {
                       ))}
                     </div>
                     <span className="sq-match-time">
-                      {result.ai_active ? '✨ Dianalisis Gemini AI · ' : 'Dicocokkan · '}
+                      {result.ai_pending
+                        ? '⏳ Menyempurnakan skor dengan Gemini AI… · '
+                        : result.ai_active
+                          ? '✨ Dianalisis Gemini AI · '
+                          : 'Dicocokkan · '}
                       {new Date(result.generated_at).toLocaleTimeString('id-ID', {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -295,7 +319,7 @@ export default function MatchingPage({ user, onLogout }) {
                       Tidak ada kandidat dengan relevansi {levelFilter}.
                     </div>
                   ) : (
-                    <div className={`sq-report-grid${matching ? ' sq-is-refreshing' : ''}`}>
+                    <div className="sq-report-grid">
                       {shown.map((m) => {
                         const level = levelInfo(m.level)
                         return (
@@ -371,17 +395,23 @@ export default function MatchingPage({ user, onLogout }) {
         <GeminiConfigDialog
           hasEnvKey={keySource === 'env'}
           hasCustomKey={keySource === 'custom'}
+          initialModel={geminiModel}
           onClose={() => setConfigOpen(false)}
-          onSaved={(newKey) => {
-            api.saveGeminiKey(newKey)
+          onSaved={({ newKey, updateKey, newModel }) => {
+            if (updateKey) {
+              api.saveGeminiKey(newKey)
+            }
+            api.saveGeminiModel(newModel)
             const nowHasKey = api.hasGeminiKey()
+            const nowModel = api.geminiModel()
             setHasGeminiKey(nowHasKey)
             setKeySource(api.geminiKeySource())
+            setGeminiModel(nowModel)
             setConfigOpen(false)
             showToast(
-              newKey
-                ? 'API Key Google Gemini disimpan! Menjalankan analisis AI…'
-                : 'API Key kustom dihapus.',
+              nowHasKey
+                ? `Konfigurasi Google Gemini (${nowModel || 'Otomatis / Semua Model'}) disimpan! Menjalankan analisis AI…`
+                : 'Konfigurasi Google Gemini diperbarui.',
               'success',
             )
             if (selectedId) runMatch(selectedId)
@@ -392,30 +422,58 @@ export default function MatchingPage({ user, onLogout }) {
   )
 }
 
-function GeminiConfigDialog({ hasEnvKey, hasCustomKey, onClose, onSaved }) {
+function GeminiConfigDialog({ hasEnvKey, hasCustomKey, initialModel, onClose, onSaved }) {
   const dialogRef = useRef(null)
   const [keyInput, setKeyInput] = useState('')
+  const [modelInput, setModelInput] = useState(initialModel || '')
+  const [availableModels, setAvailableModels] = useState([])
+  const [loadingModels, setLoadingModels] = useState(false)
+  const [modelsNotice, setModelsNotice] = useState('')
   const [error, setError] = useState('')
+
+  const fetchModels = useCallback(async (customKey = '', forceRefresh = false) => {
+    setLoadingModels(true)
+    setModelsNotice('')
+    try {
+      const models = await api.listGeminiModels(customKey, { forceRefresh })
+      setAvailableModels(models)
+      if (models.length > 0) {
+        setModelsNotice(`Ditemukan ${models.length} model Gemini yang tersedia untuk API Key Anda.`)
+      }
+    } catch (err) {
+      setModelsNotice(`Gagal memuat daftar model: ${err.message}`)
+    } finally {
+      setLoadingModels(false)
+    }
+  }, [])
 
   useEffect(() => {
     const dialog = dialogRef.current
     if (dialog && !dialog.open) dialog.showModal()
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    if (hasEnvKey || hasCustomKey) {
+      fetchModels('', false)
+    }
     return () => {
       document.body.style.overflow = prevOverflow
       if (dialog?.open) dialog.close()
     }
-  }, [])
+  }, [hasEnvKey, hasCustomKey, fetchModels])
 
   const submit = (e) => {
     e.preventDefault()
-    const trimmed = keyInput.trim()
-    if (!trimmed) {
+    const trimmedKey = keyInput.trim()
+    const trimmedModel = modelInput.trim().replace(/^models\//i, '')
+    if (!trimmedKey && !hasEnvKey && !hasCustomKey) {
       setError('Masukkan API Key Google Gemini (biasanya diawali AIza...).')
       return
     }
-    onSaved(trimmed)
+    onSaved({
+      newKey: trimmedKey,
+      updateKey: Boolean(trimmedKey),
+      newModel: trimmedModel,
+    })
   }
 
   return (
@@ -433,15 +491,15 @@ function GeminiConfigDialog({ hasEnvKey, hasCustomKey, onClose, onSaved }) {
     >
       <form className="sq-form-box sq-claim-box" onSubmit={submit} noValidate>
         <div className="sq-claim-head">
-          <span className="sq-kicker-pill">GOOGLE GEMINI AI · FREE TIER</span>
-          <h2 id="gemini-config-title">Konfigurasi API Key Google Gemini</h2>
+          <span className="sq-kicker-pill">GOOGLE GEMINI AI · SEMUA MODEL</span>
+          <h2 id="gemini-config-title">Konfigurasi API Key & Model Google Gemini</h2>
           <p className="sq-claim-item">
-            Aktifkan analisis semantik AI menggunakan model gratis <b>gemini-2.5-flash</b> dari Google AI Studio.
+            Tidak ada batasan model: gunakan mode <b>Otomatis</b> (mendeteksi seluruh model yang aktif di akun Anda) atau ketik/pilih model Gemini apa pun secara bebas.
           </p>
         </div>
 
         <p className="sq-claim-privacy">
-          Anda dapat mengatur variabel <code>VITE_GEMINI_API_KEY</code> di file <code>.env</code>, atau langsung menempelkan API Key gratis Anda dari{' '}
+          Anda dapat mengatur <code>VITE_GEMINI_API_KEY</code> dan <code>VITE_GEMINI_MODEL</code> di file <code>.env</code>, atau langsung mengaturnya dari{' '}
           <a
             href="https://aistudio.google.com/apikey"
             target="_blank"
@@ -455,12 +513,12 @@ function GeminiConfigDialog({ hasEnvKey, hasCustomKey, onClose, onSaved }) {
 
         {hasEnvKey && !hasCustomKey && (
           <p className="sq-claim-handover-note" role="status">
-            ✓ Saat ini sistem sudah membaca <code>VITE_GEMINI_API_KEY</code> dari konfigurasi <code>.env</code>.
+            ✓ Saat ini sistem sudah membaca <code>VITE_GEMINI_API_KEY</code> dari konfigurasi <code>.env</code>. Biarkan kolom API Key kosong jika hanya ingin mengganti model.
           </p>
         )}
         {hasCustomKey && (
           <p className="sq-claim-completed-note" role="status">
-            ✓ API Key Google Gemini kustom sudah tersimpan di browser Anda.
+            ✓ API Key Google Gemini kustom sudah tersimpan di browser Anda. Biarkan kolom API Key kosong jika hanya ingin mengganti model.
           </p>
         )}
 
@@ -480,7 +538,11 @@ function GeminiConfigDialog({ hasEnvKey, hasCustomKey, onClose, onSaved }) {
                 setKeyInput(e.target.value)
                 setError('')
               }}
-              placeholder="AIzaSy..."
+              placeholder={
+                hasEnvKey || hasCustomKey
+                  ? 'Sudah terhubung (isi untuk mengganti API Key baru)...'
+                  : 'AIzaSy...'
+              }
               autoComplete="off"
             />
           </div>
@@ -488,6 +550,73 @@ function GeminiConfigDialog({ hasEnvKey, hasCustomKey, onClose, onSaved }) {
             Disimpan secara lokal di browser Anda dan hanya dikirim ke endpoint resmi <code>generativelanguage.googleapis.com</code>.
           </small>
         </label>
+
+        <div className="sq-input-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <label htmlFor="gemini-model-input" className="sq-input-label" style={{ marginBottom: 0 }}>
+              Model Gemini (Bebas / Tanpa Batasan)
+            </label>
+            <button
+              type="button"
+              className="sq-btn sq-btn-outline"
+              style={{ padding: '4px 10px', fontSize: '12px' }}
+              disabled={loadingModels || (!keyInput.trim() && !hasEnvKey && !hasCustomKey)}
+              onClick={() => fetchModels(keyInput.trim(), true)}
+            >
+              {loadingModels ? 'Memuat daftar model…' : '🔄 Muat Daftar Model dari API'}
+            </button>
+          </div>
+          <div className="sq-input-underline">
+            <input
+              id="gemini-model-input"
+              type="text"
+              list="gemini-models-datalist"
+              value={modelInput}
+              onChange={(e) => setModelInput(e.target.value)}
+              placeholder="Kosongkan untuk Otomatis (mis. gemini-3.8-flash, gemini-2.5-pro, dll.)"
+              autoComplete="off"
+            />
+            <datalist id="gemini-models-datalist">
+              {availableModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.displayName}
+                </option>
+              ))}
+            </datalist>
+          </div>
+          <small className="sq-field-hint">
+            Kosongkan untuk <b>Mode Otomatis</b> (sistem mendeteksi semua model di API Key Anda dan otomatis mencoba model yang aktif). Atau ketik/pilih ID model Gemini apa saja tanpa batasan.
+          </small>
+          {modelsNotice && (
+            <small className="sq-field-hint" style={{ color: 'var(--green-50)', marginTop: '6px', display: 'block' }}>
+              {modelsNotice}
+            </small>
+          )}
+          {availableModels.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px', maxHeight: '130px', overflowY: 'auto' }}>
+              <button
+                type="button"
+                className={`sq-btn ${!modelInput.trim() ? 'sq-btn-lime' : 'sq-btn-outline'}`}
+                style={{ padding: '4px 10px', fontSize: '12px' }}
+                onClick={() => setModelInput('')}
+              >
+                ✨ Otomatis (Semua Model)
+              </button>
+              {availableModels.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`sq-btn ${modelInput.trim() === m.id ? 'sq-btn-lime' : 'sq-btn-outline'}`}
+                  style={{ padding: '4px 10px', fontSize: '12px' }}
+                  onClick={() => setModelInput(m.id)}
+                  title={m.description || m.displayName}
+                >
+                  {m.id}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="sq-claim-actions">
           <button type="button" className="sq-btn sq-btn-outline" onClick={onClose}>
@@ -497,7 +626,7 @@ function GeminiConfigDialog({ hasEnvKey, hasCustomKey, onClose, onSaved }) {
             <button
               type="button"
               className="sq-btn sq-btn-outline sq-btn-danger"
-              onClick={() => onSaved('')}
+              onClick={() => onSaved({ newKey: '', updateKey: true, newModel: modelInput.trim() })}
             >
               Hapus Key Kustom
             </button>

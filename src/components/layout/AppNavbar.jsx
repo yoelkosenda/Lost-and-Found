@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, navigate } from '../../router.jsx'
 import NotificationBell from '../notifications/NotificationBell.jsx'
+import BrandLogo from './BrandLogo.jsx'
 
 const LINKS = [
   { key: 'dashboard', to: '/app', label: 'Dashboard' },
@@ -58,15 +59,7 @@ export default function AppNavbar({ user, onLogout, active }) {
   return (
     <header className="sq-navbar" ref={headerRef}>
       <div className="sq-navbar-inner sq-app-navbar">
-        <Link to="/app" className="sq-brand" aria-label="Dashboard Lost and Found UNKLAB">
-          <span className="sq-brand-box">
-            <img src="/figma/logo-cube.svg" alt="" width="38" height="43" />
-          </span>
-          <span className="sq-brand-text">
-            Lost and Found<span>.</span>
-            <small>UNKLAB</small>
-          </span>
-        </Link>
+        <BrandLogo to="/app" ariaLabel="Dashboard Lost and Found UNKLAB" />
 
         <nav id="sq-app-nav" className={`sq-app-nav${open ? ' open' : ''}`} aria-label="Navigasi mahasiswa">
           {LINKS.map((link) => (
